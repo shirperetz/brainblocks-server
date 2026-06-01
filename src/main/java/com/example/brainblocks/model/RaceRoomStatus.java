@@ -1,5 +1,7 @@
 package com.example.brainblocks.model;
 
 public enum RaceRoomStatus {
-    WAITING
+    WAITING,
+    IN_PROGRESS,
+    FINISHED
 }
