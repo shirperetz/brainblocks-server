@@ -26,6 +26,11 @@ public class RaceRoomController {
         return raceRoomService.createRaceRoom();
     }
 
+    @PostMapping("/api/race-rooms/{roomCode}/start")
+    public RaceRoomResponse startRace(@PathVariable String roomCode) {
+        return raceRoomService.startRace(roomCode);
+    }
+
     @GetMapping("/api/race-rooms/{roomCode}")
     public RaceRoomResponse getRaceRoom(@PathVariable String roomCode) {
         return raceRoomService.getRaceRoomByCode(roomCode);
