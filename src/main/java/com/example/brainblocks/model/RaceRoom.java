@@ -46,6 +46,10 @@ public class RaceRoom {
         this.maxPlayers = maxPlayers;
     }
 
+    public void startRace() {
+        status = RaceRoomStatus.IN_PROGRESS;
+    }
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();
