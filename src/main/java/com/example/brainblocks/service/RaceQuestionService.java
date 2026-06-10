@@ -4,6 +4,7 @@ import com.example.brainblocks.dto.response.RaceQuestionResponse;
 import com.example.brainblocks.model.QuestionDifficulty;
 import com.example.brainblocks.model.QuestionOperation;
 import com.example.brainblocks.model.RaceQuestion;
+import com.example.brainblocks.model.RaceQuestionSettings;
 import com.example.brainblocks.model.RaceRoom;
 import com.example.brainblocks.model.RaceRoomStatus;
 import com.example.brainblocks.repository.RaceQuestionRepository;
@@ -25,22 +26,26 @@ public class RaceQuestionService {
 
     private final RaceRoomRepository raceRoomRepository;
     private final RaceQuestionRepository raceQuestionRepository;
+    private final RaceQuestionSettingsService raceQuestionSettingsService;
     private final SecureRandom random = new SecureRandom();
 
     public RaceQuestionService(
             RaceRoomRepository raceRoomRepository,
-            RaceQuestionRepository raceQuestionRepository
+            RaceQuestionRepository raceQuestionRepository,
+            RaceQuestionSettingsService raceQuestionSettingsService
     ) {
         this.raceRoomRepository = raceRoomRepository;
         this.raceQuestionRepository = raceQuestionRepository;
+        this.raceQuestionSettingsService = raceQuestionSettingsService;
     }
 
     @Transactional
     public RaceQuestionResponse generateQuestion(String roomCode) {
         RaceRoom raceRoom = findRaceRoom(roomCode);
         validateRaceIsInProgress(raceRoom);
+        RaceQuestionSettings settings = raceQuestionSettingsService.getSettingsOrDefault(raceRoom);
 
-        RaceQuestion raceQuestion = createEasyQuestion(raceRoom);
+        RaceQuestion raceQuestion = createEasyQuestion(raceRoom, settings);
 
         return RaceQuestionResponse.fromEntity(raceQuestionRepository.save(raceQuestion));
     }
@@ -56,10 +61,8 @@ public class RaceQuestionService {
         }
     }
 
-    private RaceQuestion createEasyQuestion(RaceRoom raceRoom) {
-        QuestionOperation operation = random.nextBoolean()
-                ? QuestionOperation.ADDITION
-                : QuestionOperation.SUBTRACTION;
+    private RaceQuestion createEasyQuestion(RaceRoom raceRoom, RaceQuestionSettings settings) {
+        QuestionOperation operation = randomOperation(settings);
         int firstNumber = randomEasyNumber();
         int secondNumber = randomEasyNumber();
 
@@ -69,10 +72,14 @@ public class RaceQuestionService {
             secondNumber = originalFirstNumber;
         }
 
-        int correctAnswer = operation == QuestionOperation.ADDITION
-                ? firstNumber + secondNumber
-                : firstNumber - secondNumber;
-        String operatorSymbol = operation == QuestionOperation.ADDITION ? "+" : "-";
+        if (operation == QuestionOperation.DIVISION) {
+            secondNumber = randomEasyNumber();
+            int answer = randomEasyNumber();
+            firstNumber = secondNumber * answer;
+        }
+
+        int correctAnswer = calculateAnswer(operation, firstNumber, secondNumber);
+        String operatorSymbol = operatorSymbol(operation);
         String questionText = firstNumber + " " + operatorSymbol + " " + secondNumber;
 
         return new RaceQuestion(
@@ -80,8 +87,31 @@ public class RaceQuestionService {
                 questionText,
                 correctAnswer,
                 operation,
-                QuestionDifficulty.EASY
+                settings.getDifficulty()
         );
+    }
+
+    private QuestionOperation randomOperation(RaceQuestionSettings settings) {
+        QuestionOperation[] operations = settings.getOperations().toArray(QuestionOperation[]::new);
+        return operations[random.nextInt(operations.length)];
+    }
+
+    private int calculateAnswer(QuestionOperation operation, int firstNumber, int secondNumber) {
+        return switch (operation) {
+            case ADDITION -> firstNumber + secondNumber;
+            case SUBTRACTION -> firstNumber - secondNumber;
+            case MULTIPLICATION -> firstNumber * secondNumber;
+            case DIVISION -> firstNumber / secondNumber;
+        };
+    }
+
+    private String operatorSymbol(QuestionOperation operation) {
+        return switch (operation) {
+            case ADDITION -> "+";
+            case SUBTRACTION -> "-";
+            case MULTIPLICATION -> "*";
+            case DIVISION -> "/";
+        };
     }
 
     private int randomEasyNumber() {
