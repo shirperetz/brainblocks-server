@@ -1,11 +1,14 @@
 package com.example.brainblocks.controller;
 
+import com.example.brainblocks.dto.request.SubmitAnswerRequest;
 import com.example.brainblocks.dto.response.RaceQuestionResponse;
+import com.example.brainblocks.dto.response.SubmitAnswerResponse;
 import com.example.brainblocks.service.RaceQuestionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,5 +26,14 @@ public class RaceQuestionController {
     @ResponseStatus(HttpStatus.CREATED)
     public RaceQuestionResponse generateQuestion(@PathVariable String roomCode) {
         return raceQuestionService.generateQuestion(roomCode);
+    }
+
+    @PostMapping("/api/race-rooms/{roomCode}/questions/{questionId}/answer")
+    public SubmitAnswerResponse submitAnswer(
+            @PathVariable String roomCode,
+            @PathVariable Long questionId,
+            @RequestBody SubmitAnswerRequest request
+    ) {
+        return raceQuestionService.submitAnswer(roomCode, questionId, request);
     }
 }
