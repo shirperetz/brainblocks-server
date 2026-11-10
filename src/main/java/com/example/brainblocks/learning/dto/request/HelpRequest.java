@@ -7,6 +7,7 @@ public class HelpRequest {
     private String chosenAnswer;
     private String grade;
     private boolean again;
+    private Integer attempt;
     private String fallbackHint;
 
     public String getQuestionText() { return questionText; }
@@ -19,6 +20,8 @@ public class HelpRequest {
     public void setGrade(String v) { this.grade = v; }
     public boolean isAgain() { return again; }
     public void setAgain(boolean v) { this.again = v; }
+    public Integer getAttempt() { return attempt; }
+    public void setAttempt(Integer v) { this.attempt = v; }
     public String getFallbackHint() { return fallbackHint; }
     public void setFallbackHint(String v) { this.fallbackHint = v; }
 }

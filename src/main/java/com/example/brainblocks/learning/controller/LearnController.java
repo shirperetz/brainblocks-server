@@ -119,8 +119,9 @@ public class LearnController {
     /** A short explanation of one question from the local AI, or the game's own hint. Never the answer. */
     @PostMapping("/help")
     public Map<String, String> help(@RequestBody HelpRequest r) {
+        int attempt = r.getAttempt() != null ? r.getAttempt() : r.isAgain() ? 1 : 0;
         HelpService.Help h = helpService.explain(r.getQuestionText(), r.getCorrectAnswer(), r.getChosenAnswer(),
-                r.getGrade(), r.isAgain(), r.getFallbackHint());
+                r.getGrade(), attempt, r.getFallbackHint());
         return Map.of("text", h.text(), "source", h.source());
     }
 

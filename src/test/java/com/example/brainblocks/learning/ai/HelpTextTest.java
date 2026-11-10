@@ -31,6 +31,44 @@ class HelpTextTest {
     }
 
     @Test
+    void wrongMathAndOtherAlphabetsAreBlocked() {
+        // Real replies (2026-11-10): a wrong sum, and a Hebrew word ending in an Arabic letter.
+        assertFalse(HelpText.safe("פרקו לפי מקומות: 300 + 100 = 470, ואז המשיכו.", "445"));
+        assertTrue(HelpText.safe("פרקו לפי מקומות: 300 + 100 = 400, ואז המשיכו.", "445"));
+        assertFalse(HelpText.safe("כמו שעשיתم עם מספרים קטנים.", "445"));
+        assertTrue(HelpText.safe("כמו שעשיתם עם מספרים קטנים: 7 + 8 = 15.", "445"));
+    }
+
+    @Test
+    void numbersMustComeFromTheQuestionOrTheCorrectWay() {
+        // Real wrong replies (2026-11-10): "81 - 18 ... 70 ... 62", "9, 12, 15" for 9 x 3.
+        Tutor.Way sub = Tutor.explain("כמה זה 81 - 18?", 1);
+        assertFalse(HelpText.onlyNumbers("חשבו כמה 80 גדול מ-10 (70), ואז כמה נשאר (62).", sub.numbers()));
+        Tutor.Way mul = Tutor.explain("כמה זה 9 × 3?", 0);
+        assertFalse(HelpText.onlyNumbers("הוסיפו 3 ל-9 שוב ושוב: 9, 12, 15.", mul.numbers()));
+        assertTrue(HelpText.onlyNumbers("יש 9 קבוצות, ובכל קבוצה 3.", mul.numbers()));
+    }
+
+    @Test
+    void numberWordsAndDroppedStepsAreBlocked() {
+        // Real (2026-11-10): "1 + 18 ... אחת-עשרה, שתים-עשרה" - counted in words, wrongly.
+        assertFalse(HelpText.safe("מתחילים מ-18 וסופרים: אחת-עשרה, שתים-עשרה...", "19"));
+        String way = Tutor.explain("כמה זה 4 × 8?", 1).text();
+        assertFalse(HelpText.keepsNumbers("דמיינו שאתם קופצים 4 פעמים קדימה, ואז 8 פעמים ימינה.", way));
+    }
+
+    @Test
+    void codeFirstThenTheModel() {
+        HelpService off = new HelpService(false, "http://localhost:1", "x");
+        assertEquals("tutor", off.explain("כמה זה 4 × 8?", "32", null, "G3", 0, "רמז").source());
+        String first = off.explain("כמה זה 4 × 8?", "32", null, "G3", 0, "רמז").text();
+        String second = off.explain("כמה זה 4 × 8?", "32", null, "G3", 1, "רמז").text();
+        org.junit.jupiter.api.Assertions.assertNotEquals(first, second);
+        // From the third press the model is asked; when it's off, the code's way is still there.
+        assertEquals("tutor", off.explain("כמה זה 4 × 8?", "32", null, "G3", 2, "רמז").source());
+    }
+
+    @Test
     void shortAndPlain() {
         String raw = "**כדי לענות:**\n1. דמיינו קבוצות.\n2. ספרו את כולן.\nאחר כך בדקו שוב. ועוד משפט רביעי שלא צריך.";
         String c = HelpText.clean(raw);
@@ -41,11 +79,16 @@ class HelpTextTest {
     @Test
     void modelOffFallsBackToTheGamesHint() {
         HelpService off = new HelpService(false, "http://localhost:1", "x");
-        HelpService.Help h = off.explain("כמה זה 3 + 4?", "7", null, "G1", false, "תתחילו מ-3 ותספרו עוד 4");
-        assertEquals("hint", h.source());
-        assertEquals("תתחילו מ-3 ותספרו עוד 4", h.text());
+        // A question the tutor knows -> its correct step-by-step way.
+        HelpService.Help h = off.explain("כמה זה 3 + 4?", "7", null, "G1", false, "רמז");
+        assertEquals("tutor", h.source());
+        assertFalse(h.text().contains("7"));
+        // One it doesn't (island text) -> the game's own hint.
+        HelpService.Help g = off.explain("הדרקון רוצה 7 תותים", "7", null, "G1", false, "סופרים תות אחד בכל פעם");
+        assertEquals("hint", g.source());
+        assertEquals("סופרים תות אחד בכל פעם", g.text());
         HelpService unreachable = new HelpService(true, "http://localhost:1", "x");
-        assertEquals("hint", unreachable.explain("כמה זה 3 + 4?", "7", null, "G1", false, "רמז").source());
+        assertEquals("tutor", unreachable.explain("כמה זה 3 + 4?", "7", null, "G1", false, "רמז").source());
     }
 
     @Test

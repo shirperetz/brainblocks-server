@@ -43,33 +43,56 @@ public class HelpService {
 
     public record Help(String text, String source) {}
 
-    public Help explain(String question, String answer, String chosen, String grade, boolean again, String fallback) {
+    /**
+     * attempt 0 / 1: the code's two correct ways (instant). From attempt 2 ("עוד דרך"): the local
+     * model rephrases a correct way, and only a reply that passes every check is shown - measured
+     * 2026-11-10, its own wording got the idea wrong in about 1 of 6 cases ("4 x 8: jump 4 forward,
+     * then 8 right"), so it is the extra layer, not the first answer. Questions the code doesn't
+     * know (none of the generated ones) go to the model first, then to the game's hint.
+     */
+    public Help explain(String question, String answer, String chosen, String grade, int attempt, String fallback) {
         String q = trim(question, 200);
+        Tutor.Way way = Tutor.explain(q, attempt);
+        if (way != null && attempt < 2) return new Help(way.text(), "tutor");
+        java.util.Set<Long> allowed = way != null ? way.numbers() : new java.util.HashSet<>(Tutor.numbersIn(q));
         if (enabled && !q.isBlank()) {
-            for (int attempt = 0; attempt < 2; attempt++) {
-                String reply = HelpText.clean(ask(systemPrompt(grade, attempt > 0), userPrompt(q, trim(chosen, 20), again)));
-                if (HelpText.safe(reply, answer)) return new Help(reply, "ai");
-                log.info("help: reply rejected (attempt {})", attempt + 1);
+            for (int i = 0; i < 2; i++) {
+                String reply = HelpText.clean(ask(systemPrompt(grade, i > 0),
+                        userPrompt(q, trim(chosen, 20), attempt > 0, way == null ? null : way.text())));
+                if (HelpText.safe(reply, answer) && HelpText.onlyNumbers(reply, allowed)
+                        && (way == null || HelpText.keepsNumbers(reply, way.text()))) {
+                    return new Help(reply, "ai");
+                }
+                log.info("help: reply rejected (try {})", i + 1);
             }
         }
+        if (way != null) return new Help(way.text(), "tutor");
         String hint = trim(fallback, 240);
         return new Help(hint.isBlank() ? "בואו נקרא את השאלה שוב לאט, ונחשוב צעד אחרי צעד." : hint, "hint");
+    }
+
+    /** Kept for callers that only know "again". */
+    public Help explain(String question, String answer, String chosen, String grade, boolean again, String fallback) {
+        return explain(question, answer, chosen, grade, again ? 1 : 0, fallback);
     }
 
     static String systemPrompt(String grade, boolean strict) {
         return "את מורה סבלנית לחשבון לילדים ב" + gradeName(grade) + ". ילדים לא הבינו שאלה. "
                 + "הסבירי בעברית פשוטה מאוד, תמיד בלשון רבים (אתם, נסו, חשבו), בשניים או שלושה משפטים קצרים, עד 40 מילים. "
                 + "תני דרך לחשוב על השאלה, או דוגמה דומה עם מספרים אחרים. "
-                + "במספרים גדולים, הציעו לפרק לפי מקומות: קודם האחדות, אחר כך העשרות, אחר כך המאות. "
                 + "אסור לכתוב את התשובה הסופית לשאלה, ואסור לעשות את החישוב עד הסוף - הילדים צריכים להגיע אליה לבד. "
                 + (strict ? "חשוב מאוד: אל תכתבי שום תוצאה של השאלה עצמה, רק את הדרך. " : "")
                 + "דברי רק על השאלה הזאת. בלי רשימות, בלי קישורים, בלי אנגלית, בלי שאלות אישיות.";
     }
 
-    static String userPrompt(String question, String chosen, boolean again) {
+    static String userPrompt(String question, String chosen, boolean again, String correctWay) {
         StringBuilder u = new StringBuilder("השאלה: ").append(question);
-        if (!chosen.isBlank()) u.append("\nהילדים ענו ").append(chosen).append(", וזה לא נכון.");
-        if (again) u.append("\nההסבר הקודם לא עזר. הסבירי בדרך אחרת לגמרי, עם משהו מהחיים (ממתקים, כדורים, צעדים).");
+        if (correctWay != null) {
+            u.append("\nהסבר נכון שכבר בדקנו: ").append(correctWay)
+                    .append("\nנסחי את ההסבר הזה מחדש לילדים, חם וברור. אל תוסיפי שום מספר או חישוב שלא מופיעים בו.");
+        }
+        if (chosen != null && !chosen.isBlank()) u.append("\nהילדים ענו ").append(chosen).append(", וזה לא נכון.");
+        if (again) u.append("\nההסבר הקודם לא עזר, אז זו דרך אחרת.");
         return u.toString();
     }
 
