@@ -74,6 +74,17 @@ public class LearnerProfile {
         this.totalPoints = Math.max(0, this.totalPoints + delta);
     }
 
+    /**
+     * The daily challenge was finished on {@code today}: yesterday too -> streak grows; already
+     * today -> unchanged; a gap -> starts again at 1. Returns true when it counted (first today).
+     */
+    public boolean completeDaily(LocalDate today) {
+        if (today.equals(lastDailyDate)) return false;
+        dailyStreak = today.minusDays(1).equals(lastDailyDate) ? dailyStreak + 1 : 1;
+        lastDailyDate = today;
+        return true;
+    }
+
     public void touch() {
         this.lastActiveAt = LocalDateTime.now();
     }

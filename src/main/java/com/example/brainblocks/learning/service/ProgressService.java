@@ -104,6 +104,9 @@ public class ProgressService {
 
         // Points + activity on the profile.
         profile.addPoints(points);
+        if (mode == SessionMode.DAILY) {
+            profile.completeDaily(java.time.LocalDate.now());
+        }
         profile.touch();
         profileRepository.save(profile);
 
@@ -112,10 +115,11 @@ public class ProgressService {
                 profile.getId(), topic, profile.getGrade(), stage, mode,
                 total, correct, points, stars, hintsUsed, request.getDurationMs()));
 
-        // Persist mistakes (wrong answers) for the review screen.
+        // Persist mistakes (wrong answers) for the review screen. Not from the 60-second challenge:
+        // quick taps against the clock are not "what was hard" (a test run left 55 of them).
         List<MistakeDto> mistakeDtos = new ArrayList<>();
         for (AnswerDto a : answers) {
-            if (!a.isCorrect()) {
+            if (!a.isCorrect() && mode != SessionMode.TIMED) {
                 Topic mistakeTopic = a.getTopic() != null ? parseTopic(a.getTopic()) : topic;
                 LearnerMistake saved = mistakeRepository.save(new LearnerMistake(
                         profile.getId(), mistakeTopic, a.getQuestionText(),

@@ -13,6 +13,17 @@ import com.example.brainblocks.learning.service.LearnerProfileService;
 import com.example.brainblocks.learning.service.LearningQuestionService;
 import com.example.brainblocks.learning.service.ProgressService;
 import org.springframework.http.HttpStatus;
+import com.example.brainblocks.learning.ai.HelpService;
+import com.example.brainblocks.learning.ai.SpeechService;
+import com.example.brainblocks.learning.dto.request.HelpRequest;
+import com.example.brainblocks.learning.dto.response.MistakeDto;
+import com.example.brainblocks.learning.model.LearnerMistake;
+import com.example.brainblocks.learning.model.LearnerSession;
+import com.example.brainblocks.learning.model.SessionMode;
+import com.example.brainblocks.learning.repository.LearnerMistakeRepository;
+import com.example.brainblocks.learning.repository.LearnerSessionRepository;
+import java.util.Map;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,13 +50,25 @@ public class LearnController {
     private final LearnerProfileService profileService;
     private final LearningQuestionService questionService;
     private final ProgressService progressService;
+    private final HelpService helpService;
+    private final SpeechService speechService;
+    private final LearnerMistakeRepository mistakeRepository;
+    private final LearnerSessionRepository sessionRepository;
 
     public LearnController(LearnerProfileService profileService,
                            LearningQuestionService questionService,
-                           ProgressService progressService) {
+                           ProgressService progressService,
+                           HelpService helpService,
+                           SpeechService speechService,
+                           LearnerMistakeRepository mistakeRepository,
+                           LearnerSessionRepository sessionRepository) {
         this.profileService = profileService;
         this.questionService = questionService;
         this.progressService = progressService;
+        this.helpService = helpService;
+        this.speechService = speechService;
+        this.mistakeRepository = mistakeRepository;
+        this.sessionRepository = sessionRepository;
     }
 
     // ---- Profiles ----------------------------------------------------------
@@ -89,6 +112,59 @@ public class LearnController {
     @PostMapping("/sessions")
     public SessionSummaryResponse submitSession(@RequestBody SubmitSessionRequest request) {
         return progressService.submitSession(request);
+    }
+
+    // ---- Help ("לא הבנתי") -----------------------------------------------
+
+    /** A short explanation of one question from the local AI, or the game's own hint. Never the answer. */
+    @PostMapping("/help")
+    public Map<String, String> help(@RequestBody HelpRequest r) {
+        HelpService.Help h = helpService.explain(r.getQuestionText(), r.getCorrectAnswer(), r.getChosenAnswer(),
+                r.getGrade(), r.isAgain(), r.getFallbackHint());
+        return Map.of("text", h.text(), "source", h.source());
+    }
+
+    /** The help text read aloud (WAV) for children who can't read yet; 204 when no voice is available. */
+    @PostMapping(path = "/speak", produces = "audio/wav")
+    public ResponseEntity<byte[]> speak(@RequestBody Map<String, String> body) {
+        byte[] wav = speechService.speak(body.get("text"));
+        return wav == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(wav);
+    }
+
+    // ---- Review mistakes + challenges -------------------------------------
+
+    /** Mistakes not fixed yet, newest first (at most 20). */
+    @GetMapping("/profiles/{id}/mistakes")
+    public List<MistakeDto> mistakes(@PathVariable Long id) {
+        profileService.findProfile(id);
+        return mistakeRepository.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(id).stream()
+                .limit(20).map(MistakeDto::fromEntity).toList();
+    }
+
+    /** The child answered a past mistake correctly - it leaves the review list. */
+    @PostMapping("/mistakes/{id}/resolve")
+    public Map<String, Boolean> resolveMistake(@PathVariable Long id, @RequestParam Long profileId) {
+        LearnerMistake m = mistakeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "mistake not found"));
+        if (!m.getProfileId().equals(profileId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "mistake not found");
+        m.resolve();
+        mistakeRepository.save(m);
+        return Map.of("resolved", true);
+    }
+
+    /** For the home screen: daily streak, whether today's challenge is done, best 60-second score, open mistakes. */
+    @GetMapping("/profiles/{id}/stats")
+    public Map<String, Object> stats(@PathVariable Long id) {
+        LearnerProfile p = profileService.findProfile(id);
+        List<LearnerSession> sessions = sessionRepository.findByProfileId(id);
+        int bestTimed = sessions.stream().filter(s -> s.getMode() == SessionMode.TIMED)
+                .mapToInt(LearnerSession::getCorrectCount).max().orElse(0);
+        java.time.LocalDate today = java.time.LocalDate.now();
+        boolean dailyDone = today.equals(p.getLastDailyDate());
+        int streak = dailyDone || today.minusDays(1).equals(p.getLastDailyDate()) ? p.getDailyStreak() : 0;
+        long open = mistakeRepository.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(id).size();
+        return Map.of("dailyStreak", streak, "dailyDone", dailyDone, "bestTimed", bestTimed,
+                "openMistakes", open, "totalPoints", p.getTotalPoints());
     }
 
     private Topic parseTopic(String value) {
