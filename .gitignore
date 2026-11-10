@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local secrets / data ###
+local.properties
+*.sql
+*.sql.gz
+*.dump
+.env

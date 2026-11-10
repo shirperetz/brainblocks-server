@@ -30,19 +30,13 @@ public class RaceQuestionSettings {
     private RaceRoom raceRoom;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "race_question_setting_operations",
-            joinColumns = @JoinColumn(name = "settings_id")
-    )
+    @CollectionTable(name = "race_question_setting_operations", joinColumns = @JoinColumn(name = "settings_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "operation", nullable = false, length = 30)
     private Set<QuestionOperation> operations = EnumSet.noneOf(QuestionOperation.class);
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "race_question_setting_number_types",
-            joinColumns = @JoinColumn(name = "settings_id")
-    )
+    @CollectionTable(name = "race_question_setting_number_types", joinColumns = @JoinColumn(name = "settings_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "number_type", nullable = false, length = 30)
     private Set<QuestionNumberType> numberTypes = EnumSet.noneOf(QuestionNumberType.class);
@@ -51,46 +45,35 @@ public class RaceQuestionSettings {
     @Column(nullable = false, length = 30)
     private QuestionDifficulty difficulty;
 
-    protected RaceQuestionSettings() {
-    }
+    @Column(nullable = false)
+    private int questionTimeLimit;
 
-    public RaceQuestionSettings(
-            RaceRoom raceRoom,
-            Set<QuestionOperation> operations,
-            Set<QuestionNumberType> numberTypes,
-            QuestionDifficulty difficulty
-    ) {
+    @Column(nullable = false)
+    private boolean manualMode;
+
+    protected RaceQuestionSettings() {}
+
+    public RaceQuestionSettings(RaceRoom raceRoom, Set<QuestionOperation> operations,
+                                 Set<QuestionNumberType> numberTypes, QuestionDifficulty difficulty,
+                                 int questionTimeLimit, boolean manualMode) {
         this.raceRoom = raceRoom;
-        update(operations, numberTypes, difficulty);
+        update(operations, numberTypes, difficulty, questionTimeLimit, manualMode);
     }
 
-    public void update(
-            Set<QuestionOperation> operations,
-            Set<QuestionNumberType> numberTypes,
-            QuestionDifficulty difficulty
-    ) {
-        this.operations = EnumSet.copyOf(operations);
-        this.numberTypes = EnumSet.copyOf(numberTypes);
+    public void update(Set<QuestionOperation> operations, Set<QuestionNumberType> numberTypes,
+                       QuestionDifficulty difficulty, int questionTimeLimit, boolean manualMode) {
+        this.operations = operations.isEmpty() ? EnumSet.of(QuestionOperation.ADDITION) : EnumSet.copyOf(operations);
+        this.numberTypes = numberTypes.isEmpty() ? EnumSet.of(QuestionNumberType.WHOLE_NUMBERS) : EnumSet.copyOf(numberTypes);
         this.difficulty = difficulty;
+        this.questionTimeLimit = questionTimeLimit;
+        this.manualMode = manualMode;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public RaceRoom getRaceRoom() {
-        return raceRoom;
-    }
-
-    public Set<QuestionOperation> getOperations() {
-        return operations;
-    }
-
-    public Set<QuestionNumberType> getNumberTypes() {
-        return numberTypes;
-    }
-
-    public QuestionDifficulty getDifficulty() {
-        return difficulty;
-    }
+    public Long getId() { return id; }
+    public RaceRoom getRaceRoom() { return raceRoom; }
+    public Set<QuestionOperation> getOperations() { return operations; }
+    public Set<QuestionNumberType> getNumberTypes() { return numberTypes; }
+    public QuestionDifficulty getDifficulty() { return difficulty; }
+    public int getQuestionTimeLimit() { return questionTimeLimit; }
+    public boolean isManualMode() { return manualMode; }
 }

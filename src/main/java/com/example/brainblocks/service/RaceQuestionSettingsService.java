@@ -1,7 +1,5 @@
 package com.example.brainblocks.service;
 
-import com.example.brainblocks.dto.request.UpdateQuestionSettingsRequest;
-import com.example.brainblocks.dto.response.QuestionSettingsResponse;
 import com.example.brainblocks.model.QuestionDifficulty;
 import com.example.brainblocks.model.QuestionNumberType;
 import com.example.brainblocks.model.QuestionOperation;
@@ -14,20 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 public class RaceQuestionSettingsService {
-
-    public static final Set<QuestionOperation> DEFAULT_OPERATIONS = EnumSet.of(
-            QuestionOperation.ADDITION,
-            QuestionOperation.SUBTRACTION
-    );
-    public static final Set<QuestionNumberType> DEFAULT_NUMBER_TYPES = EnumSet.of(QuestionNumberType.WHOLE_NUMBERS);
-    public static final QuestionDifficulty DEFAULT_DIFFICULTY = QuestionDifficulty.EASY;
 
     private final RaceRoomRepository raceRoomRepository;
     private final RaceQuestionSettingsRepository raceQuestionSettingsRepository;
@@ -40,69 +31,69 @@ public class RaceQuestionSettingsService {
         this.raceQuestionSettingsRepository = raceQuestionSettingsRepository;
     }
 
-    @Transactional
-    public QuestionSettingsResponse updateQuestionSettings(
-            String roomCode,
-            UpdateQuestionSettingsRequest request
-    ) {
-        RaceRoom raceRoom = findRaceRoom(roomCode);
-        Set<QuestionOperation> operations = validateOperations(request);
-        Set<QuestionNumberType> numberTypes = validateNumberTypes(request);
-        QuestionDifficulty difficulty = validateDifficulty(request);
-
-        RaceQuestionSettings settings = raceQuestionSettingsRepository.findByRaceRoom(raceRoom)
-                .orElseGet(() -> new RaceQuestionSettings(raceRoom, operations, numberTypes, difficulty));
-        settings.update(operations, numberTypes, difficulty);
-
-        return QuestionSettingsResponse.fromEntity(raceQuestionSettingsRepository.save(settings));
-    }
-
     @Transactional(readOnly = true)
     public RaceQuestionSettings getSettingsOrDefault(RaceRoom raceRoom) {
-        return raceQuestionSettingsRepository.findByRaceRoom(raceRoom)
-                .orElseGet(() -> new RaceQuestionSettings(
-                        raceRoom,
-                        DEFAULT_OPERATIONS,
-                        DEFAULT_NUMBER_TYPES,
-                        DEFAULT_DIFFICULTY
-                ));
+        return raceQuestionSettingsRepository.findByRaceRoom(raceRoom).orElseGet(() -> {
+            RaceQuestionSettings s = new RaceQuestionSettings(
+                    raceRoom,
+                    EnumSet.of(QuestionOperation.ADDITION, QuestionOperation.SUBTRACTION),
+                    EnumSet.of(QuestionNumberType.WHOLE_NUMBERS),
+                    QuestionDifficulty.EASY,
+                    30, false
+            );
+            return raceQuestionSettingsRepository.save(s);
+        });
     }
 
-    private RaceRoom findRaceRoom(String roomCode) {
-        return raceRoomRepository.findByRoomCode(roomCode.toUpperCase())
+    @Transactional
+    public RaceQuestionSettings createOrUpdate(RaceRoom raceRoom, List<String> operations,
+                                                List<String> numberTypes, String difficulty,
+                                                int questionTimeLimit, boolean manualMode) {
+        Set<QuestionOperation> ops = parseOperations(operations);
+        Set<QuestionNumberType> types = parseNumberTypes(numberTypes);
+        QuestionDifficulty diff = parseDifficulty(difficulty);
+        int timeLimit = questionTimeLimit > 0 ? questionTimeLimit : 30;
+
+        return raceQuestionSettingsRepository.findByRaceRoom(raceRoom).map(s -> {
+            s.update(ops, types, diff, timeLimit, manualMode);
+            return raceQuestionSettingsRepository.save(s);
+        }).orElseGet(() -> raceQuestionSettingsRepository.save(
+                new RaceQuestionSettings(raceRoom, ops, types, diff, timeLimit, manualMode)));
+    }
+
+    @Transactional
+    public RaceQuestionSettings updateByRoomCode(String roomCode, List<String> operations,
+                                                  List<String> numberTypes, String difficulty,
+                                                  int questionTimeLimit, boolean manualMode) {
+        RaceRoom raceRoom = raceRoomRepository.findByRoomCode(roomCode.toUpperCase())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Race room not found"));
+        return createOrUpdate(raceRoom, operations, numberTypes, difficulty, questionTimeLimit, manualMode);
     }
 
-    private Set<QuestionOperation> validateOperations(UpdateQuestionSettingsRequest request) {
-        if (request == null || request.getOperations() == null || request.getOperations().isEmpty()) {
-            throw new ResponseStatusException(BAD_REQUEST, "At least one operation is required");
+    private Set<QuestionOperation> parseOperations(List<String> operations) {
+        Set<QuestionOperation> ops = EnumSet.noneOf(QuestionOperation.class);
+        if (operations != null) {
+            for (String op : operations) {
+                try { ops.add(QuestionOperation.valueOf(op.toUpperCase())); } catch (Exception ignored) {}
+            }
         }
-
-        return EnumSet.copyOf(request.getOperations());
+        if (ops.isEmpty()) ops.add(QuestionOperation.ADDITION);
+        return ops;
     }
 
-    private Set<QuestionNumberType> validateNumberTypes(UpdateQuestionSettingsRequest request) {
-        if (request == null || request.getNumberTypes() == null || request.getNumberTypes().isEmpty()) {
-            throw new ResponseStatusException(BAD_REQUEST, "At least one number type is required");
+    private Set<QuestionNumberType> parseNumberTypes(List<String> numberTypes) {
+        Set<QuestionNumberType> types = EnumSet.noneOf(QuestionNumberType.class);
+        if (numberTypes != null) {
+            for (String nt : numberTypes) {
+                try { types.add(QuestionNumberType.valueOf(nt.toUpperCase())); } catch (Exception ignored) {}
+            }
         }
-
-        Set<QuestionNumberType> numberTypes = EnumSet.copyOf(request.getNumberTypes());
-        if (!numberTypes.equals(DEFAULT_NUMBER_TYPES)) {
-            throw new ResponseStatusException(BAD_REQUEST, "Only whole numbers are supported right now");
-        }
-
-        return numberTypes;
+        if (types.isEmpty()) types.add(QuestionNumberType.WHOLE_NUMBERS);
+        return types;
     }
 
-    private QuestionDifficulty validateDifficulty(UpdateQuestionSettingsRequest request) {
-        if (request == null || request.getDifficulty() == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "Difficulty is required");
-        }
-
-        if (request.getDifficulty() != DEFAULT_DIFFICULTY) {
-            throw new ResponseStatusException(BAD_REQUEST, "Only easy difficulty is supported right now");
-        }
-
-        return request.getDifficulty();
+    private QuestionDifficulty parseDifficulty(String difficulty) {
+        if (difficulty == null) return QuestionDifficulty.EASY;
+        try { return QuestionDifficulty.valueOf(difficulty.toUpperCase()); } catch (Exception e) { return QuestionDifficulty.EASY; }
     }
 }

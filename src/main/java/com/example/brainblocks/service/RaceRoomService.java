@@ -1,6 +1,8 @@
 package com.example.brainblocks.service;
 
+import com.example.brainblocks.dto.request.CreateRaceRoomRequest;
 import com.example.brainblocks.dto.response.RaceRoomResponse;
+import com.example.brainblocks.model.PlayerStatus;
 import com.example.brainblocks.model.RaceRoom;
 import com.example.brainblocks.model.RaceRoomStatus;
 import com.example.brainblocks.repository.RacePlayerRepository;
@@ -10,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -17,85 +21,122 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 public class RaceRoomService {
 
-    private static final int MAX_PLAYERS = 8;
+    private static final int ABSOLUTE_MAX_PLAYERS = 8;
     private static final int ROOM_CODE_LENGTH = 6;
-    private static final String ROOM_CODE_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final String ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final int MAX_CODE_ATTEMPTS = 20;
 
     private final RaceRoomRepository raceRoomRepository;
     private final RacePlayerRepository racePlayerRepository;
+    private final RaceQuestionSettingsService settingsService;
+    private final SseService sseService;
     private final SecureRandom random = new SecureRandom();
 
-    public RaceRoomService(RaceRoomRepository raceRoomRepository, RacePlayerRepository racePlayerRepository) {
+    public RaceRoomService(RaceRoomRepository raceRoomRepository, RacePlayerRepository racePlayerRepository,
+                           RaceQuestionSettingsService settingsService, SseService sseService) {
         this.raceRoomRepository = raceRoomRepository;
         this.racePlayerRepository = racePlayerRepository;
+        this.settingsService = settingsService;
+        this.sseService = sseService;
     }
 
     @Transactional
-    public RaceRoomResponse createRaceRoom() {
+    public RaceRoomResponse createRaceRoom(CreateRaceRoomRequest request) {
         String roomCode = generateUniqueRoomCode();
-        RaceRoom raceRoom = new RaceRoom(roomCode, RaceRoomStatus.WAITING, MAX_PLAYERS);
 
-        return RaceRoomResponse.fromEntity(raceRoomRepository.save(raceRoom));
+        int maxPlayers = (request.getMaxPlayers() > 0 && request.getMaxPlayers() <= ABSOLUTE_MAX_PLAYERS)
+                ? request.getMaxPlayers() : ABSOLUTE_MAX_PLAYERS;
+        int minPlayers = (request.getMinPlayers() > 0) ? request.getMinPlayers() : 1;
+        int trackLength = (request.getTrackLength() > 0) ? request.getTrackLength() : 1000;
+        String name = (request.getName() != null && !request.getName().isBlank()) ? request.getName() : "Math Race";
+        String teacherKey = request.getTeacherKey();
+
+        RaceRoom room = new RaceRoom(roomCode, name, teacherKey, RaceRoomStatus.WAITING,
+                maxPlayers, minPlayers, trackLength, request.isRequiresApproval());
+        room = raceRoomRepository.save(room);
+
+        settingsService.createOrUpdate(room,
+                request.getOperations(),
+                request.getNumberTypes(),
+                request.getDifficulty(),
+                request.getQuestionTimeLimit(),
+                request.isManualMode());
+
+        return RaceRoomResponse.fromEntity(room);
     }
 
     @Transactional(readOnly = true)
     public RaceRoomResponse getRaceRoomByCode(String roomCode) {
-        return RaceRoomResponse.fromEntity(findRaceRoom(roomCode));
+        return RaceRoomResponse.fromEntity(findRoom(roomCode));
     }
 
     @Transactional
     public RaceRoomResponse startRace(String roomCode) {
-        RaceRoom raceRoom = findRaceRoom(roomCode);
-        validateRaceCanStart(raceRoom);
+        RaceRoom room = findRoom(roomCode);
 
-        raceRoom.startRace();
+        if (room.getStatus() != RaceRoomStatus.WAITING) {
+            throw new ResponseStatusException(CONFLICT, "Race room cannot be started from its current status");
+        }
 
-        return RaceRoomResponse.fromEntity(raceRoom);
+        int approvedCount = racePlayerRepository.countByRaceRoomAndStatus(room, PlayerStatus.APPROVED);
+        int totalCount = racePlayerRepository.countByRaceRoom(room);
+
+        if (!room.isRequiresApproval() && totalCount == 0) {
+            throw new ResponseStatusException(CONFLICT, "Cannot start race without players");
+        }
+        if (room.isRequiresApproval() && approvedCount < room.getMinPlayers()) {
+            throw new ResponseStatusException(CONFLICT,
+                    "Need at least " + room.getMinPlayers() + " approved player(s) to start");
+        }
+        if (!room.isRequiresApproval() && totalCount < room.getMinPlayers()) {
+            throw new ResponseStatusException(CONFLICT,
+                    "Need at least " + room.getMinPlayers() + " player(s) to start");
+        }
+
+        if (!room.isRequiresApproval()) {
+            racePlayerRepository.findByRaceRoomOrderByJoinedAtAsc(room)
+                    .forEach(p -> { p.approve(); racePlayerRepository.save(p); });
+        }
+
+        room.startRace();
+        room = raceRoomRepository.save(room);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("roomCode", room.getRoomCode());
+        data.put("status", "IN_PROGRESS");
+        sseService.broadcast(roomCode, "RACE_STARTED", data);
+
+        return RaceRoomResponse.fromEntity(room);
     }
 
-    private RaceRoom findRaceRoom(String roomCode) {
+    @Transactional
+    public RaceRoomResponse finishRaceManually(String roomCode) {
+        RaceRoom room = findRoom(roomCode);
+        if (room.getStatus() == RaceRoomStatus.FINISHED) {
+            return RaceRoomResponse.fromEntity(room);
+        }
+        room.finishRace();
+        return RaceRoomResponse.fromEntity(raceRoomRepository.save(room));
+    }
+
+    private RaceRoom findRoom(String roomCode) {
         return raceRoomRepository.findByRoomCode(roomCode.toUpperCase())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Race room not found"));
     }
 
-    private void validateRaceCanStart(RaceRoom raceRoom) {
-        if (raceRoom.getStatus() == RaceRoomStatus.IN_PROGRESS) {
-            throw new ResponseStatusException(CONFLICT, "Race room is already in progress");
-        }
-
-        if (raceRoom.getStatus() == RaceRoomStatus.FINISHED) {
-            throw new ResponseStatusException(CONFLICT, "Race room is already finished");
-        }
-
-        if (raceRoom.getStatus() != RaceRoomStatus.WAITING) {
-            throw new ResponseStatusException(CONFLICT, "Race room cannot be started from its current status");
-        }
-
-        if (racePlayerRepository.countByRaceRoom(raceRoom) == 0) {
-            throw new ResponseStatusException(CONFLICT, "Cannot start race without players");
-        }
-    }
-
     private String generateUniqueRoomCode() {
-        for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
-            String roomCode = generateRoomCode();
-            if (!raceRoomRepository.existsByRoomCode(roomCode)) {
-                return roomCode;
-            }
+        for (int i = 0; i < MAX_CODE_ATTEMPTS; i++) {
+            String code = generateRoomCode();
+            if (!raceRoomRepository.existsByRoomCode(code)) return code;
         }
-
-        throw new IllegalStateException("Could not generate a unique race room code");
+        throw new IllegalStateException("Could not generate unique room code");
     }
 
     private String generateRoomCode() {
-        StringBuilder roomCode = new StringBuilder(ROOM_CODE_LENGTH);
-
-        for (int index = 0; index < ROOM_CODE_LENGTH; index++) {
-            int characterIndex = random.nextInt(ROOM_CODE_CHARACTERS.length());
-            roomCode.append(ROOM_CODE_CHARACTERS.charAt(characterIndex));
+        StringBuilder sb = new StringBuilder(ROOM_CODE_LENGTH);
+        for (int i = 0; i < ROOM_CODE_LENGTH; i++) {
+            sb.append(ROOM_CODE_CHARS.charAt(random.nextInt(ROOM_CODE_CHARS.length())));
         }
-
-        return roomCode.toString();
+        return sb.toString();
     }
 }

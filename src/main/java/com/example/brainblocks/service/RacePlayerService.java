@@ -3,6 +3,7 @@ package com.example.brainblocks.service;
 import com.example.brainblocks.dto.request.JoinRaceRoomRequest;
 import com.example.brainblocks.dto.response.RaceLobbyResponse;
 import com.example.brainblocks.dto.response.RacePlayerResponse;
+import com.example.brainblocks.model.PlayerStatus;
 import com.example.brainblocks.model.RacePlayer;
 import com.example.brainblocks.model.RaceRoom;
 import com.example.brainblocks.model.RaceRoomStatus;
@@ -12,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
@@ -21,81 +24,129 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 public class RacePlayerService {
 
-    private static final int MIN_DISPLAY_NAME_LENGTH = 1;
-    private static final int MAX_DISPLAY_NAME_LENGTH = 24;
+    private static final int MIN_NAME_LEN = 1;
+    private static final int MAX_NAME_LEN = 24;
 
     private final RaceRoomRepository raceRoomRepository;
     private final RacePlayerRepository racePlayerRepository;
+    private final SseService sseService;
 
-    public RacePlayerService(RaceRoomRepository raceRoomRepository, RacePlayerRepository racePlayerRepository) {
+    public RacePlayerService(RaceRoomRepository raceRoomRepository, RacePlayerRepository racePlayerRepository,
+                             SseService sseService) {
         this.raceRoomRepository = raceRoomRepository;
         this.racePlayerRepository = racePlayerRepository;
+        this.sseService = sseService;
     }
 
     @Transactional
     public RacePlayerResponse joinRaceRoom(String roomCode, JoinRaceRoomRequest request) {
-        RaceRoom raceRoom = findRaceRoom(roomCode);
-        validateRoomCanAcceptPlayers(raceRoom);
+        RaceRoom room = findRoom(roomCode);
+        validateRoomAcceptsPlayers(room);
 
-        String displayName = validateDisplayName(request);
-        validateDisplayNameIsAvailable(raceRoom, displayName);
+        String name = validateName(request);
+        validateNameAvailable(room, name);
 
-        RacePlayer racePlayer = new RacePlayer(raceRoom, displayName);
-        return RacePlayerResponse.fromEntity(racePlayerRepository.save(racePlayer));
+        int colorIndex = racePlayerRepository.countByRaceRoom(room);
+        RacePlayer player = new RacePlayer(room, name, colorIndex);
+        player = racePlayerRepository.save(player);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("participantId", player.getId());
+        data.put("displayName", player.getDisplayName());
+        data.put("color", player.getColor());
+        data.put("status", player.getStatus().name());
+        sseService.broadcast(roomCode, "PARTICIPANT_JOINED", data);
+
+        return RacePlayerResponse.fromEntity(player);
     }
 
     @Transactional(readOnly = true)
     public RaceLobbyResponse getLobby(String roomCode) {
-        RaceRoom raceRoom = findRaceRoom(roomCode);
-        List<RacePlayerResponse> players = racePlayerRepository.findByRaceRoomOrderByJoinedAtAsc(raceRoom)
-                .stream()
-                .map(RacePlayerResponse::fromEntity)
-                .toList();
-
+        RaceRoom room = findRoom(roomCode);
+        List<RacePlayerResponse> players = racePlayerRepository.findByRaceRoomOrderByJoinedAtAsc(room)
+                .stream().map(RacePlayerResponse::fromEntity).toList();
         return new RaceLobbyResponse(
-                raceRoom.getRoomCode(),
-                raceRoom.getStatus(),
-                raceRoom.getMaxPlayers(),
-                players.size(),
-                players
+                room.getRoomCode(), room.getName(), room.getStatus(),
+                room.getMaxPlayers(), room.getMinPlayers(), room.getTrackLength(),
+                room.isRequiresApproval(), players.size(), players
         );
     }
 
-    private RaceRoom findRaceRoom(String roomCode) {
+    @Transactional(readOnly = true)
+    public RacePlayerResponse getPlayer(String roomCode, Long participantId) {
+        RaceRoom room = findRoom(roomCode);
+        RacePlayer player = racePlayerRepository.findByRaceRoomAndId(room, participantId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Participant not found"));
+        return RacePlayerResponse.fromEntity(player);
+    }
+
+    @Transactional
+    public RacePlayerResponse approveParticipant(String roomCode, Long participantId) {
+        RaceRoom room = findRoom(roomCode);
+        RacePlayer player = findPlayer(room, participantId);
+        if (player.getStatus() != PlayerStatus.PENDING) {
+            throw new ResponseStatusException(CONFLICT, "Player is not in PENDING state");
+        }
+        player.approve();
+        player = racePlayerRepository.save(player);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("participantId", player.getId());
+        data.put("displayName", player.getDisplayName());
+        data.put("status", "APPROVED");
+        sseService.broadcast(roomCode, "PARTICIPANT_APPROVED", data);
+
+        return RacePlayerResponse.fromEntity(player);
+    }
+
+    @Transactional
+    public RacePlayerResponse rejectParticipant(String roomCode, Long participantId) {
+        RaceRoom room = findRoom(roomCode);
+        RacePlayer player = findPlayer(room, participantId);
+        player.reject();
+        player = racePlayerRepository.save(player);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("participantId", player.getId());
+        data.put("displayName", player.getDisplayName());
+        data.put("status", "REJECTED");
+        sseService.broadcast(roomCode, "PARTICIPANT_REJECTED", data);
+
+        return RacePlayerResponse.fromEntity(player);
+    }
+
+    private RaceRoom findRoom(String roomCode) {
         return raceRoomRepository.findByRoomCode(roomCode.toUpperCase())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Race room not found"));
     }
 
-    private void validateRoomCanAcceptPlayers(RaceRoom raceRoom) {
-        if (raceRoom.getStatus() != RaceRoomStatus.WAITING) {
-            throw new ResponseStatusException(CONFLICT, "Race room is not waiting for players");
-        }
+    private RacePlayer findPlayer(RaceRoom room, Long id) {
+        return racePlayerRepository.findByRaceRoomAndId(room, id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Participant not found"));
+    }
 
-        if (racePlayerRepository.countByRaceRoom(raceRoom) >= raceRoom.getMaxPlayers()) {
+    private void validateRoomAcceptsPlayers(RaceRoom room) {
+        if (room.getStatus() != RaceRoomStatus.WAITING) {
+            throw new ResponseStatusException(CONFLICT, "Race room is not accepting players");
+        }
+        if (racePlayerRepository.countByRaceRoom(room) >= room.getMaxPlayers()) {
             throw new ResponseStatusException(CONFLICT, "Race room is full");
         }
     }
 
-    private String validateDisplayName(JoinRaceRoomRequest request) {
-        if (request == null || request.getDisplayName() == null) {
+    private String validateName(JoinRaceRoomRequest request) {
+        if (request == null || request.getDisplayName() == null)
             throw new ResponseStatusException(BAD_REQUEST, "Display name is required");
-        }
-
-        String displayName = request.getDisplayName().trim();
-        if (displayName.length() < MIN_DISPLAY_NAME_LENGTH) {
+        String name = request.getDisplayName().trim();
+        if (name.length() < MIN_NAME_LEN)
             throw new ResponseStatusException(BAD_REQUEST, "Display name cannot be blank");
-        }
-
-        if (displayName.length() > MAX_DISPLAY_NAME_LENGTH) {
-            throw new ResponseStatusException(BAD_REQUEST, "Display name cannot be longer than 24 characters");
-        }
-
-        return displayName;
+        if (name.length() > MAX_NAME_LEN)
+            throw new ResponseStatusException(BAD_REQUEST, "Display name too long (max 24 chars)");
+        return name;
     }
 
-    private void validateDisplayNameIsAvailable(RaceRoom raceRoom, String displayName) {
-        if (racePlayerRepository.existsByRaceRoomAndDisplayNameIgnoreCase(raceRoom, displayName)) {
-            throw new ResponseStatusException(CONFLICT, "Display name is already taken in this room");
-        }
+    private void validateNameAvailable(RaceRoom room, String name) {
+        if (racePlayerRepository.existsByRaceRoomAndDisplayNameIgnoreCase(room, name))
+            throw new ResponseStatusException(CONFLICT, "Display name already taken in this room");
     }
 }

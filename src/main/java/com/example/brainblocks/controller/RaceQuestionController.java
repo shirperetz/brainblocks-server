@@ -1,39 +1,44 @@
 package com.example.brainblocks.controller;
 
-import com.example.brainblocks.dto.request.SubmitAnswerRequest;
+import com.example.brainblocks.dto.request.AnswerRequest;
+import com.example.brainblocks.dto.request.DecisionRequest;
+import com.example.brainblocks.dto.response.AnswerResponse;
 import com.example.brainblocks.dto.response.RaceQuestionResponse;
-import com.example.brainblocks.dto.response.SubmitAnswerResponse;
-import com.example.brainblocks.service.RaceQuestionService;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import com.example.brainblocks.service.RaceGameService;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping("/api/race-rooms")
 public class RaceQuestionController {
 
-    private final RaceQuestionService raceQuestionService;
+    private final RaceGameService raceGameService;
 
-    public RaceQuestionController(RaceQuestionService raceQuestionService) {
-        this.raceQuestionService = raceQuestionService;
+    public RaceQuestionController(RaceGameService raceGameService) {
+        this.raceGameService = raceGameService;
     }
 
-    @PostMapping("/api/race-rooms/{roomCode}/questions")
-    @ResponseStatus(HttpStatus.CREATED)
-    public RaceQuestionResponse generateQuestion(@PathVariable String roomCode) {
-        return raceQuestionService.generateQuestion(roomCode);
+    @GetMapping("/{roomCode}/question")
+    public RaceQuestionResponse getQuestion(@PathVariable String roomCode,
+                                             @RequestParam Long participantId) {
+        return raceGameService.getOrGenerateQuestion(roomCode, participantId);
     }
 
-    @PostMapping("/api/race-rooms/{roomCode}/questions/{questionId}/answer")
-    public SubmitAnswerResponse submitAnswer(
-            @PathVariable String roomCode,
-            @PathVariable Long questionId,
-            @RequestBody SubmitAnswerRequest request
-    ) {
-        return raceQuestionService.submitAnswer(roomCode, questionId, request);
+    @PostMapping("/{roomCode}/answer")
+    public AnswerResponse submitAnswer(@PathVariable String roomCode,
+                                       @RequestBody AnswerRequest request) {
+        return raceGameService.submitAnswer(roomCode, request.getParticipantId(),
+                request.getQuestionId(), request.getAnswer());
+    }
+
+    @PostMapping("/{roomCode}/decision")
+    public RaceQuestionResponse makeDecision(@PathVariable String roomCode,
+                                              @RequestBody DecisionRequest request) {
+        return raceGameService.handleDecision(roomCode, request.getParticipantId(), request.getChoice());
     }
 }

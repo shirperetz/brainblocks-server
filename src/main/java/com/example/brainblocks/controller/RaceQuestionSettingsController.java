@@ -1,29 +1,31 @@
 package com.example.brainblocks.controller;
 
-import com.example.brainblocks.dto.request.UpdateQuestionSettingsRequest;
-import com.example.brainblocks.dto.response.QuestionSettingsResponse;
+import com.example.brainblocks.dto.request.CreateRaceRoomRequest;
 import com.example.brainblocks.service.RaceQuestionSettingsService;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping("/api/race-rooms")
 public class RaceQuestionSettingsController {
 
-    private final RaceQuestionSettingsService raceQuestionSettingsService;
+    private final RaceQuestionSettingsService settingsService;
 
-    public RaceQuestionSettingsController(RaceQuestionSettingsService raceQuestionSettingsService) {
-        this.raceQuestionSettingsService = raceQuestionSettingsService;
+    public RaceQuestionSettingsController(RaceQuestionSettingsService settingsService) {
+        this.settingsService = settingsService;
     }
 
-    @PutMapping("/api/race-rooms/{roomCode}/question-settings")
-    public QuestionSettingsResponse updateQuestionSettings(
-            @PathVariable String roomCode,
-            @RequestBody UpdateQuestionSettingsRequest request
-    ) {
-        return raceQuestionSettingsService.updateQuestionSettings(roomCode, request);
+    @PutMapping("/{roomCode}/question-settings")
+    public Map<String, Object> updateSettings(@PathVariable String roomCode,
+                                               @RequestBody CreateRaceRoomRequest request) {
+        settingsService.updateByRoomCode(roomCode,
+                request.getOperations(), request.getNumberTypes(),
+                request.getDifficulty(), request.getQuestionTimeLimit(), request.isManualMode());
+        return Map.of("roomCode", roomCode, "updated", true);
     }
 }
