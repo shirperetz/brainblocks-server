@@ -137,8 +137,12 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                             l.cleanup(now);
                         }
                     }
-                    String who = visitor(req);
                     boolean post = "POST".equals(req.getMethod());
+                    String who = visitor(req);
+                    if (post && path.equals("/api/learn/auth/register")) {
+                        // who tried to sign up, and from where (Shir: "nobody gets in without me knowing")
+                        org.slf4j.LoggerFactory.getLogger("brainblocks.signup").info("sign-up attempt from {}", who);
+                    }
                     boolean ok = all.allow(who, now)
                             && (!post || !path.equals("/api/learn/auth/register") || register.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/login") || login.allow(who, now))

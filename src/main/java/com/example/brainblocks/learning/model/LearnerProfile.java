@@ -80,6 +80,12 @@ public class LearnerProfile {
     /** Blocked by the admin: can't log in, the device token stops working. Reversible. */
     private Boolean disabled;
 
+    /**
+     * 2026-11-11 (Shir: "nobody gets in without me knowing"): a new sign-up waits for the admin's OK.
+     * false = waiting; null = an account from before approvals existed (counts as approved).
+     */
+    private Boolean approved;
+
     protected LearnerProfile() {}
 
     public LearnerProfile(String name, Avatar avatar) {
@@ -144,4 +150,6 @@ public class LearnerProfile {
     public boolean isAdmin() { return Boolean.TRUE.equals(admin); }
     public boolean isDisabled() { return Boolean.TRUE.equals(disabled); }
     public void setDisabled(boolean disabled) { this.disabled = disabled; }
+    public boolean isApproved() { return !Boolean.FALSE.equals(approved); }
+    public void setApproved(boolean approved) { this.approved = approved; }
 }

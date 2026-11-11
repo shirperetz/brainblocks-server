@@ -41,8 +41,12 @@ class AccountServiceTest {
         List<LearnerProfile> db = new ArrayList<>();
         AccountService a = service(db);
         var made = a.register("Noa", "1234", "נועה", "ROBOT", "G3", null);
-        assertThat(made.token()).hasSizeGreaterThan(30);
+        // 2026-11-11: a new sign-up waits for the admin - no token, no log-in until approved
+        assertThat(made.token()).isNull();
+        assertThat(made.profile().isApproved()).isFalse();
         assertThat(made.profile().getUsername()).isEqualTo("noa");
+        assertThatThrownBy(() -> a.login("noa", "1234", Instant.now())).hasMessageContaining("מחכה לאישור");
+        a.approve(made.profile().getId());
         var again = a.login("NOA", "1234", Instant.now());
         assertThat(again.profile().getId()).isEqualTo(made.profile().getId());
         assertThat(a.profileFor(again.token())).contains(made.profile().getId());
@@ -59,7 +63,7 @@ class AccountServiceTest {
         var a = withCode(db, "482915");
         assertThatThrownBy(() -> a.register(null, "noa", "1234", "נועה", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
         assertThatThrownBy(() -> a.register("000000", "noa", "1234", "נועה", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
-        assertThat(a.register(" 482915 ", "noa", "1234", "נועה", "ROBOT", null, null).token()).isNotBlank();
+        assertThat(a.register(" 482915 ", "noa", "1234", "נועה", "ROBOT", null, null).profile().getUsername()).isEqualTo("noa");
         var closed = withCode(new ArrayList<>(), "");
         assertThatThrownBy(() -> closed.register("", "dan", "1234", "דן", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
     }
@@ -79,7 +83,7 @@ class AccountServiceTest {
     @Test
     void fiveWrongPasswordsPauseTheUsername() {
         AccountService a = service(new ArrayList<>());
-        a.register("dan", "secret", "דן", "ROBOT", null, null);
+        a.approve(a.register("dan", "secret", "דן", "ROBOT", null, null).profile().getId());
         Instant t = Instant.parse("2026-11-11T16:00:00Z");
         for (int i = 0; i < AccountService.MAX_FAILURES; i++) {
             assertThatThrownBy(() -> a.login("dan", "wrong", t)).hasMessageContaining("לא נכונים");
@@ -126,10 +130,13 @@ class AccountServiceTest {
         AccountService a = service(db);
         var kid = a.register("noa", "1234", "נועה", "ROBOT", null, null);
         Long id = kid.profile().getId();
+        a.approve(id);
+        var first = a.login("noa", "1234", Instant.now());
+        assertThat(a.profileFor(first.token())).contains(id);
         // a forgotten password: new one works, the old one and old devices don't
         a.setCredentials(id, null, "5678");
         assertThatThrownBy(() -> a.login("noa", "1234", Instant.now())).hasMessageContaining("לא נכונים");
-        assertThat(a.profileFor(kid.token())).isEmpty();
+        assertThat(a.profileFor(first.token())).isEmpty();
         var again = a.login("noa", "5678", Instant.now());
         // blocked: no log-in, device token stops; unblocked: works again
         a.setDisabled(id, true, 999L);
@@ -140,7 +147,7 @@ class AccountServiceTest {
         assertThatThrownBy(() -> a.setDisabled(999L, true, 999L)).hasMessageContaining("את עצמך");
         // join code
         assertThat(a.changeJoinCode(" 7777 ")).isEqualTo("7777");
-        assertThat(a.register("7777", "dan", "1234", "דן", "ROBOT", null, null).token()).isNotBlank();
+        assertThat(a.register("7777", "dan", "1234", "דן", "ROBOT", null, null).profile().isApproved()).isFalse();
         assertThatThrownBy(() -> a.changeJoinCode("1 2")).hasMessageContaining("4 עד 20");
         assertThat(a.changeJoinCode("")).isEmpty(); // sign-up closed
         assertThatThrownBy(() -> a.register("", "eli", "1234", "אלי", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");

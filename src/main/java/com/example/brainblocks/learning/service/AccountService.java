@@ -140,6 +140,14 @@ public class AccountService {
         return ProfileResponse.fromEntity(p);
     }
 
+    /** The admin lets a new child in. */
+    public ProfileResponse approve(Long id) {
+        LearnerProfile p = profileService.findProfile(id);
+        p.setApproved(true);
+        repository.save(p);
+        return ProfileResponse.fromEntity(p);
+    }
+
     public boolean isAdmin(Long id) {
         return id != null && repository.findById(id).map(LearnerProfile::isAdmin).orElse(false);
     }
@@ -177,9 +185,10 @@ public class AccountService {
         LearnerProfile p = profileService.findProfile(id);
         p.setUsername(user);
         p.setPasswordHash(hash(password));
-        p.setAuthToken(newToken());
+        // Waits for the admin: no token until she approves (the child logs in after that).
+        p.setApproved(false);
         repository.save(p);
-        return new Session(p.getAuthToken(), ProfileResponse.fromEntity(p));
+        return new Session(null, ProfileResponse.fromEntity(p));
     }
 
     public Session login(String username, String password, Instant now) {
@@ -199,6 +208,9 @@ public class AccountService {
         if (p.isDisabled()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "המשתמש הזה חסום. פנו להורים או למורה");
         }
+        if (!p.isApproved()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ההרשמה התקבלה ומחכה לאישור. אפשר להיכנס אחרי שיאשרו");
+        }
         if (p.getAuthToken() == null) {
             p.setAuthToken(newToken());
         }
@@ -212,7 +224,7 @@ public class AccountService {
         if (token == null || token.isBlank() || token.length() > 64) {
             return Optional.empty();
         }
-        return repository.findByAuthToken(token).filter(p -> !p.isDisabled()).map(LearnerProfile::getId);
+        return repository.findByAuthToken(token).filter(p -> !p.isDisabled() && p.isApproved()).map(LearnerProfile::getId);
     }
 
     static String normalize(String username) {

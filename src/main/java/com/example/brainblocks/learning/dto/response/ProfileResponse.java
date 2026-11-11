@@ -39,7 +39,7 @@ public class ProfileResponse {
         return new ProfileResponse(
                 p.getId(), p.getName(), p.getAvatar(), p.getGrade(), p.getDifficulty(),
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
-        ).withUsername(p.getUsername()).withAdmin(p.isAdmin());
+        ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved());
     }
 
     /** 2026-11-11: shown on the home screen ("מחובר/ת בתור ...") - never the password or token. */
@@ -60,6 +60,15 @@ public class ProfileResponse {
     }
 
     public boolean isAdmin() { return admin; }
+
+    private boolean approved = true;
+
+    private ProfileResponse withApproved(boolean approved) {
+        this.approved = approved;
+        return this;
+    }
+
+    public boolean isApproved() { return approved; }
 
     public Long getId() { return id; }
     public String getName() { return name; }

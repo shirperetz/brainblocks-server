@@ -70,6 +70,7 @@ public class AdminController {
                     m.put("createdAt", p.getCreatedAt());
                     m.put("admin", p.isAdmin());
                     m.put("disabled", p.isDisabled());
+                    m.put("approved", p.isApproved());
                     m.put("sessions", sessions.findByProfileId(p.getId()).size());
                     m.put("openMistakes", mistakes.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(p.getId()).size());
                     return m;
@@ -91,6 +92,13 @@ public class AdminController {
                                        @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         requireAdmin(me);
         return accounts.setDisabled(id, Boolean.TRUE.equals(body.get("disabled")), me);
+    }
+
+    /** A child who signed up with the code - let in. (To refuse: block.) */
+    @PostMapping("/children/{id}/approve")
+    public ProfileResponse approve(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        requireAdmin(me);
+        return accounts.approve(id);
     }
 
     @GetMapping("/join-code")
