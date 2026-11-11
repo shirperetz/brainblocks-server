@@ -38,3 +38,4 @@ local.properties
 *.sql.gz
 *.dump
 .env
+run/
