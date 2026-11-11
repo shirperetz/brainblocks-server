@@ -94,7 +94,19 @@ class LearningQuestionServiceTest {
             return t4 + (t4 - t3);
         }
         if (q.getTopic() == Topic.COMPARISON) {
-            return opts.stream().mapToLong(Long::parseLong).max().orElseThrow();
+            return t.contains("הקטן") ? opts.stream().mapToLong(Long::parseLong).min().orElseThrow()
+                    : opts.stream().mapToLong(Long::parseLong).max().orElseThrow();
+        }
+        // 2026-11-11: "מה המספר החסר? 7 + ? = 12" / "? × 4 = 28" - put the answer back and check.
+        Matcher miss = Pattern.compile("מה המספר החסר\\? (\\d+|\\?) ([+\\-×÷]) (\\d+|\\?) = (\\d+)").matcher(t);
+        if (miss.find()) {
+            long marked = Long.parseLong(opts.get(q.getCorrectIndex()));
+            long a = miss.group(1).equals("?") ? marked : Long.parseLong(miss.group(1));
+            long b = miss.group(3).equals("?") ? marked : Long.parseLong(miss.group(3));
+            long r = Long.parseLong(miss.group(4));
+            long got = switch (miss.group(2)) { case "+" -> a + b; case "-" -> a - b; case "×" -> a * b; default -> b == 0 ? -1 : (a % b == 0 ? a / b : -1); };
+            assertEquals(r, got, "missing number - " + t + " " + opts);
+            return marked;
         }
         // Word problems: check the worked solution in the explanation, and that it matches the story.
         Matcher w = Pattern.compile("(\\d+) (ועוד|פחות|כפול) (\\d+) זה (\\d+)").matcher(q.getExplanation());

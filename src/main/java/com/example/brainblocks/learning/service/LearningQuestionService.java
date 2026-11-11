@@ -63,18 +63,18 @@ public class LearningQuestionService {
         if (grade.ordinal() >= Grade.G5.ordinal()) {
             pool.add(Topic.FRACTIONS);
         }
-        if (grade == Grade.G6) {
-            pool.add(Topic.GEOMETRY);
+        if (grade.ordinal() >= Grade.G5.ordinal()) {
+            pool.add(Topic.GEOMETRY); // 2026-11-11: גיאומטריה גם לכיתה ה׳
         }
         return pool.get(random.nextInt(pool.size()));
     }
 
     private QuestionResponse buildQuestion(int id, Topic topic, Grade grade, Difficulty diff, int stage) {
         return switch (topic) {
-            case ADDITION -> addition(id, grade, diff, stage);
-            case SUBTRACTION -> subtraction(id, grade, diff, stage);
-            case MULTIPLICATION -> multiplication(id, grade, diff, stage);
-            case DIVISION -> division(id, grade, diff, stage);
+            // 2026-11-11 ("שיהיה מכל הסוגים"): from level 2, about a third are "what is missing?".
+            case ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION -> stage >= 2 && random.nextInt(10) < 3
+                    ? missing(arith(id, topic, grade, diff, stage))
+                    : arith(id, topic, grade, diff, stage);
             case COMPARISON -> comparison(id, grade, diff, stage);
             case SEQUENCES -> sequences(id, grade, diff, stage);
             case WORD_PROBLEMS -> wordProblem(id, grade, diff, stage);
@@ -84,6 +84,43 @@ public class LearningQuestionService {
             // Island games build their own rounds in the client; a plain addition question is a safe fallback.
             case DRAGON, BALLOONS, BRIDGE, TRAIN -> addition(id, grade, diff, stage);
         };
+    }
+
+    private QuestionResponse arith(int id, Topic topic, Grade grade, Difficulty diff, int stage) {
+        return switch (topic) {
+            case SUBTRACTION -> subtraction(id, grade, diff, stage);
+            case MULTIPLICATION -> multiplication(id, grade, diff, stage);
+            case DIVISION -> division(id, grade, diff, stage);
+            default -> addition(id, grade, diff, stage);
+        };
+    }
+
+    private static final java.util.regex.Pattern PLAIN = java.util.regex.Pattern.compile("כמה זה (\\d+) ([+\\-×÷]) (\\d+)\\?");
+
+    /**
+     * "כמה זה 7 + 5?" -> "מה המספר החסר? 7 + ? = 12" (or "? + 5 = 12"): same numbers, the child finds a
+     * part instead of the whole. The answer is the hidden number; the options are rebuilt around it.
+     */
+    private QuestionResponse missing(QuestionResponse q) {
+        java.util.regex.Matcher m = PLAIN.matcher(q.getText());
+        if (!m.matches()) return q;
+        int a = Integer.parseInt(m.group(1));
+        int b = Integer.parseInt(m.group(3));
+        String op = m.group(2);
+        int r = Integer.parseInt(q.getOptions().get(q.getCorrectIndex()));
+        boolean hideFirst = random.nextBoolean();
+        int hidden = hideFirst ? a : b;
+        String text = "מה המספר החסר? " + (hideFirst ? "?" : String.valueOf(a)) + " " + op + " " + (hideFirst ? String.valueOf(b) : "?") + " = " + r;
+        String hint = switch (op) {
+            case "+" -> hideFirst ? "כמה צריך להוסיף ל-" + b + " כדי להגיע ל-" + r + "?" : "מ-" + a + " ל-" + r + ": כמה צעדים קדימה?";
+            case "-" -> hideFirst ? "מאיזה מספר מורידים " + b + " ומקבלים " + r + "? חברו " + r + " ועוד " + b + "."
+                    : "כמה הורדנו מ-" + a + " כדי להגיע ל-" + r + "?";
+            case "×" -> "איזה מספר כפול " + (hideFirst ? b : a) + " נותן " + r + "?";
+            default -> hideFirst ? "איזה מספר מחלקים ב-" + b + " ומקבלים " + r + "? כפלו " + b + " ב-" + r + "."
+                    : "את " + a + " מחלקים לקבוצות שוות ומקבלים " + r + ". בכמה מחלקים?";
+        };
+        return build(q.getId(), q.getTopic(), text, hidden, Math.max(2, hidden / 5 + 2), hint,
+                (hideFirst ? hidden + " " + op + " " + b : a + " " + op + " " + hidden) + " = " + r, null);
     }
 
     // ---- Per-topic builders -------------------------------------------------
@@ -162,8 +199,14 @@ public class LearningQuestionService {
             nums.add(rand(1, max));
         }
         List<Integer> options = new ArrayList<>(nums);
-        int correct = Collections.max(options);
+        // 2026-11-11: from level 2, half ask for the smallest.
+        boolean smallest = stage >= 2 && random.nextBoolean();
+        int correct = smallest ? Collections.min(options) : Collections.max(options);
         List<String> strOptions = options.stream().map(String::valueOf).toList();
+        if (smallest) {
+            return new QuestionResponse(id, Topic.COMPARISON, "איזה המספר הקטן ביותר?", strOptions, options.indexOf(correct),
+                    "כמה ספרות יש בכל מספר? פחות ספרות = מספר קטן יותר", "המספר הקטן ביותר הוא " + correct, null);
+        }
         return new QuestionResponse(id, Topic.COMPARISON,
                 "איזה המספר הגדול ביותר?",
                 strOptions, options.indexOf(correct),
@@ -174,14 +217,19 @@ public class LearningQuestionService {
 
     private QuestionResponse sequences(int id, Grade grade, Difficulty diff, int stage) {
         int step = grade.ordinal() <= Grade.G1.ordinal() ? rand(1, 3) : rand(1, 5);
-        int start = rand(1, Math.max(2, additiveMax(grade) / 4));
-        int t1 = start, t2 = start + step, t3 = start + 2 * step, t4 = start + 3 * step;
-        int next = start + 4 * step;
+        if (grade.ordinal() >= Grade.G3.ordinal() && stage >= 4) step = rand(2, grade.ordinal() >= Grade.G5.ordinal() ? 25 : 10);
+        // 2026-11-11: from level 3, some sequences go down (always staying at 0 or above).
+        boolean down = stage >= 3 && random.nextInt(10) < 4;
+        int start = rand(1, Math.max(2, additiveMax(grade) / 4)) + (down ? 4 * step : 0);
+        if (down && start - 4 * step == step) start++; // the answer must not equal the step (the help names the step)
+        int s = down ? -step : step;
+        int t1 = start, t2 = start + s, t3 = start + 2 * s, t4 = start + 3 * s;
+        int next = start + 4 * s;
         return build(id, Topic.SEQUENCES,
                 "מה המספר הבא? " + t1 + ", " + t2 + ", " + t3 + ", " + t4 + ", ?",
                 next, Math.max(2, step + 1),
-                "תבדוק כמה מוסיפים בכל פעם",
-                "מוסיפים " + step + " בכל פעם, אז הבא הוא " + next,
+                down ? "תבדוק כמה מורידים בכל פעם" : "תבדוק כמה מוסיפים בכל פעם",
+                (down ? "מורידים " : "מוסיפים ") + step + " בכל פעם, אז הבא הוא " + next,
                 null);
     }
 

@@ -33,24 +33,118 @@ final class FractionGeometryQuestions {
 
     // ---- שברים ----------------------------------------------------------------------------------
 
+    /**
+     * 2026-11-11 ("שיהיה מלא ומכל הסוגים"): each level has its new kinds (about 60%) and goes back to
+     * everything from the earlier levels (about 40%), so a level is practice, not ten of the same.
+     */
+    private static final int[][] FRACTION_LEVELS = {
+            {1, 2}, // 1: איזה חלק צבוע, איזה שבר הכי גדול
+            {3, 7}, // 2: שברים שווים, השלמת שבר שווה (1/3 = ?/9)
+            {4},    // 3: חיבור/חיסור באותו מכנה
+            {5, 9}, // 4: שבר מכמות, בעיה מילולית
+            {8},    // 5: צמצום (ו׳: גם מספרים עשרוניים)
+            {6},    // 6: ו׳ - מכנים שונים; ה׳ - הכול מעורב
+    };
+
     QuestionResponse fraction(int id, Grade grade, int stage, boolean withPicture) {
         boolean g6 = grade == Grade.G6;
-        int kind = switch (stage) {
-            case 1 -> withPicture ? 1 : 2;
-            case 2 -> 2;
-            case 3 -> 3;
-            case 4 -> 4;
-            case 5 -> 5;
-            default -> g6 ? 6 : 2 + random.nextInt(4);
-        };
+        int s = Math.min(Math.max(stage, 1), 6);
+        List<Integer> current = new ArrayList<>();
+        for (int k : FRACTION_LEVELS[s - 1]) current.add(k);
+        if (s == 5 && g6) current.add(10);
+        if (s == 6 && !g6) current.clear(); // grade 5: level 6 is everything mixed
+        List<Integer> earlier = new ArrayList<>();
+        for (int i = 0; i < s - 1; i++) for (int k : FRACTION_LEVELS[i]) earlier.add(k);
+        if (g6 && s == 6) earlier.add(10);
+        if (!withPicture) {
+            current.remove(Integer.valueOf(1));
+            earlier.remove(Integer.valueOf(1));
+        }
+        int kind = pickKind(current, earlier, 2);
         return switch (kind) {
             case 1 -> shaded(id);
             case 2 -> biggest(id, grade);
             case 3 -> equivalent(id);
             case 4 -> sameDenominator(id, grade);
             case 5 -> partOf(id, grade);
+            case 7 -> missingInEquivalent(id);
+            case 8 -> simplify(id);
+            case 9 -> fractionStory(id, grade);
+            case 10 -> decimals(id);
             default -> differentDenominators(id);
         };
+    }
+
+    /** About 60% from this level's kinds, the rest from earlier ones; [fallback] when both are empty. */
+    private int pickKind(List<Integer> current, List<Integer> earlier, int fallback) {
+        if (current.isEmpty() && earlier.isEmpty()) return fallback;
+        if (earlier.isEmpty() || (!current.isEmpty() && random.nextInt(10) < 6)) return current.get(random.nextInt(current.size()));
+        return earlier.get(random.nextInt(earlier.size()));
+    }
+
+    /** "1/3 = ?/9" - the number the top was multiplied by is the one the bottom was. */
+    private QuestionResponse missingInEquivalent(int id) {
+        int[][] bases = {{1, 2}, {1, 3}, {2, 3}, {1, 4}, {3, 4}, {2, 5}, {3, 5}, {1, 6}, {5, 6}};
+        int[] b = bases[random.nextInt(bases.length)];
+        int k = rand(2, 5);
+        int answer = b[0] * k;
+        return text(id, Topic.FRACTIONS, "איזה מספר חסר? " + frac(b[0], b[1]) + " = ?/" + b[1] * k, String.valueOf(answer),
+                List.of(String.valueOf(b[0] + k), String.valueOf(b[1] * k - b[0]), String.valueOf(answer + b[0])),
+                "בכמה הוכפל המספר שלמטה? את המספר שלמעלה כופלים באותו מספר.",
+                b[1] + " × " + k + " = " + b[1] * k + ", ולכן " + b[0] + " × " + k + " = " + answer + ".", null);
+    }
+
+    /** "צמצמו את 6/8" - divide top and bottom by the same number, as far as it goes. */
+    private QuestionResponse simplify(int id) {
+        int[][] bases = {{1, 2}, {1, 3}, {2, 3}, {1, 4}, {3, 4}, {2, 5}, {3, 5}, {4, 5}, {5, 6}, {3, 7}};
+        int[] b = bases[random.nextInt(bases.length)];
+        int k = rand(2, 5);
+        String correct = frac(b[0], b[1]);
+        int g = gcd(b[0] * k, b[1] * k);
+        // Half-way (k = 4 -> divided by 2 only) is the real mistake; the others are near misses.
+        List<String> wrong = List.of(k == 4 ? frac(b[0] * 2, b[1] * 2) : frac(b[0] + 1, b[1] + 1), frac(b[0], b[1] + 1), frac(b[0] + 1, b[1]));
+        return text(id, Topic.FRACTIONS, "צמצמו עד הסוף את " + frac(b[0] * k, b[1] * k), correct, wrong,
+                "מחלקים את המספר שלמעלה ואת המספר שלמטה באותו מספר, עד שאין עוד מספר שמחלק את שניהם.",
+                frac(b[0] * k, b[1] * k) + " = " + correct + " (חילקנו ב-" + g + ").", null);
+    }
+
+    /** A story: "לנועה 12 סוכריות, היא נתנה רבע לחברה. כמה סוכריות נתנה?" */
+    private QuestionResponse fractionStory(int id, Grade grade) {
+        String[][] parts = {{"חצי", "2"}, {"שליש", "3"}, {"רבע", "4"}, {"חמישית", "5"}};
+        String[] p = parts[random.nextInt(grade == Grade.G6 ? 4 : 3)];
+        int d = Integer.parseInt(p[1]);
+        int whole = d * rand(2, 9);
+        String[] names = {"נועה", "דניאל", "מאיה", "יואב", "תמר", "איתי"};
+        String[] things = {"סוכריות", "מדבקות", "קלפים", "גולות", "עפרונות"};
+        String name = names[random.nextInt(names.length)];
+        String thing = things[random.nextInt(things.length)];
+        boolean left = random.nextBoolean();
+        int gave = whole / d;
+        int r = left ? whole - gave : gave;
+        return text(id, Topic.FRACTIONS, "ל" + name + " יש " + whole + " " + thing + ". " + p[0] + " מהן נתנו לחבר. "
+                        + (left ? "כמה נשארו?" : "כמה נתנו?"), String.valueOf(r),
+                List.of(String.valueOf(left ? gave : whole - gave), String.valueOf(whole - d), String.valueOf(r + d)),
+                p[0] + " זה לחלק ל-" + d + " חלקים שווים ולקחת חלק אחד." + (left ? " אחר כך בודקים כמה נשאר." : ""),
+                p[0] + " מ-" + whole + " זה " + gave + (left ? ", ונשארו " + r : "") + ".", null);
+    }
+
+    /** Grade 6: "0.3 + 0.4 = ?" / "0.5 כשבר" - tenths only, written with a point. */
+    private QuestionResponse decimals(int id) {
+        if (random.nextBoolean()) {
+            int a = rand(1, 7), b = rand(1, 9 - a);
+            String correct = "0." + (a + b);
+            return text(id, Topic.FRACTIONS, "0." + a + " + 0." + b + " = ?", correct,
+                    List.of("0." + a + b, "0." + (a + b + 1), (a + b) + ""),
+                    "0.3 זה 3 עשיריות. מחברים עשיריות כמו שמחברים מספרים רגילים.",
+                    a + " עשיריות ועוד " + b + " עשיריות זה " + (a + b) + " עשיריות: " + correct + ".", null);
+        }
+        int[][] pairs = {{1, 2, 5}, {1, 5, 2}, {2, 5, 4}, {3, 10, 3}, {7, 10, 7}, {4, 5, 8}};
+        int[] p = pairs[random.nextInt(pairs.length)];
+        String correct = "0." + p[2];
+        return text(id, Topic.FRACTIONS, "איך כותבים את " + frac(p[0], p[1]) + " כמספר עשרוני?", correct,
+                List.of("0." + p[0], "0." + p[0] + p[1], p[2] == 5 ? "0.2" : "0.5"),
+                "מחפשים שבר שווה עם 10 למטה - ואז המספר שלמעלה הוא מספר העשיריות.",
+                frac(p[0], p[1]) + " = " + frac(p[2], 10) + " = " + correct + ".", null);
     }
 
     /** "איזה חלק מהעיגול צבוע?" - picture: a pie or bar with n of d parts coloured. */
@@ -161,16 +255,89 @@ final class FractionGeometryQuestions {
 
     // ---- גיאומטריה ------------------------------------------------------------------------------
 
+    private static final int[][] GEOMETRY_LEVELS = {
+            {1, 7},     // 1: היקף מלבן, היקף משולש
+            {2, 8},     // 2: שטח מלבן, צלע חסרה לפי היקף
+            {3, 9},     // 3: ריבוע, צלע ריבוע לפי שטח
+            {4, 10, 11}, // 4: זוויות במשולש, זווית על קו ישר, משולש ישר-זווית
+            {5},        // 5: שטח משולש ישר-זווית
+            {6, 12},    // 6: כמה צלעות, שמות צורות
+    };
+
     QuestionResponse geometry(int id, int stage, boolean withPicture) {
-        int kind = stage >= 6 ? (withPicture ? 6 : 1 + random.nextInt(5)) : stage;
+        int s = Math.min(Math.max(stage, 1), 6);
+        List<Integer> current = new ArrayList<>();
+        for (int k : GEOMETRY_LEVELS[s - 1]) current.add(k);
+        List<Integer> earlier = new ArrayList<>();
+        for (int i = 0; i < s - 1; i++) for (int k : GEOMETRY_LEVELS[i]) earlier.add(k);
+        if (!withPicture) current.remove(Integer.valueOf(6));
+        int kind = pickKind(current, earlier, 1);
         return switch (kind) {
             case 1 -> perimeter(id);
             case 2 -> area(id);
             case 3 -> square(id);
             case 4 -> angles(id);
             case 5 -> triangleArea(id);
-            default -> random.nextBoolean() ? sides(id) : (random.nextBoolean() ? angles(id) : triangleArea(id));
+            case 6 -> sides(id);
+            case 7 -> trianglePerimeter(id);
+            case 8 -> missingSide(id);
+            case 9 -> squareSideFromArea(id);
+            case 10 -> straightAngle(id);
+            case 11 -> rightTriangleAngle(id);
+            default -> shapeName(id);
         };
+    }
+
+    private QuestionResponse trianglePerimeter(int id) {
+        int a = rand(3, 12), b = rand(3, 12), c = rand(Math.abs(a - b) + 1, a + b - 1);
+        int r = a + b + c;
+        return number(id, "למשולש יש צלעות באורך " + a + ", " + b + " ו-" + c + " ס\"מ. מה ההיקף שלו?", r,
+                List.of(a + b, a * b, r + 1), "היקף = מחברים את כל הצלעות מסביב. למשולש יש 3 צלעות.",
+                a + " + " + b + " + " + c + " = " + r + " ס\"מ.", new VisualModel("TRIANGLE_SIDES", null, a, b, c, null));
+    }
+
+    /** "היקף מלבן 30 ס"מ, אורכו 9. מה רוחבו?" - half the perimeter, minus the length. */
+    private QuestionResponse missingSide(int id) {
+        int w = rand(4, 15), h = rand(2, 12);
+        if (w == h) w++;
+        int p = 2 * (w + h);
+        return number(id, "ההיקף של מלבן הוא " + p + " ס\"מ, ואורכו " + w + " ס\"מ. מה הרוחב שלו?", h,
+                List.of(p - w, p / 2, p - 2 * w), "אורך ורוחב יחד הם חצי מההיקף. מחצי ההיקף מורידים את האורך.",
+                p + " ÷ 2 = " + (w + h) + ", ו-" + (w + h) + " - " + w + " = " + h + " ס\"מ.", null);
+    }
+
+    private QuestionResponse squareSideFromArea(int id) {
+        int s = rand(2, 12);
+        return number(id, "השטח של ריבוע הוא " + s * s + " סמ\"ר. מה אורך הצלע שלו?", s,
+                List.of(s * s / 4 == s ? s + 2 : s * s / 4, s * s / 2, s + 1), "איזה מספר כפול עצמו נותן את השטח?",
+                s + " × " + s + " = " + s * s + ", אז הצלע היא " + s + " ס\"מ.", null);
+    }
+
+    /** Two angles on a straight line make 180°. */
+    private QuestionResponse straightAngle(int id) {
+        int a = 5 * rand(4, 32);
+        int r = 180 - a;
+        return number(id, "על קו ישר יש שתי זוויות צמודות. אחת מהן " + a + "°. כמה מעלות הזווית השנייה?", r,
+                List.of(360 - a, Math.abs(90 - a) == r ? r + 10 : Math.abs(90 - a), a),
+                "זוויות על קו ישר יחד הן 180°.", "180 - " + a + " = " + r + "°.", new VisualModel("LINE_ANGLE", null, a, 0, 0, null));
+    }
+
+    private QuestionResponse rightTriangleAngle(int id) {
+        int a = rand(15, 75);
+        int r = 90 - a;
+        return number(id, "במשולש ישר-זווית אחת הזוויות החדות היא " + a + "°. כמה מעלות הזווית החדה השנייה?", r,
+                List.of(180 - a, 180 - 90 - a + 10, a), "במשולש ישר-זווית יש זווית של 90°, ושתי האחרות יחד הן 90°.",
+                "90 - " + a + " = " + r + "°.", null);
+    }
+
+    private QuestionResponse shapeName(int id) {
+        int n = new int[] {3, 4, 5, 6, 8}[random.nextInt(5)];
+        String[] names = {"", "", "", "משולש", "מרובע", "מחומש", "משושה", "", "מתומן"};
+        List<String> wrong = new ArrayList<>();
+        for (int m : new int[] {3, 4, 5, 6, 8}) if (m != n) wrong.add(names[m]);
+        Collections.shuffle(wrong, random);
+        return text(id, Topic.GEOMETRY, "איך קוראים לצורה עם " + n + " צלעות?", names[n], wrong.subList(0, 3),
+                "שמות הצורות באים ממספרים: מחומש - חמש, משושה - שש, מתומן - שמונה.", "לצורה עם " + n + " צלעות קוראים " + names[n] + ".", null);
     }
 
     private QuestionResponse perimeter(int id) {
@@ -274,7 +441,8 @@ final class FractionGeometryQuestions {
         int bump = 1;
         while (options.size() < 4) {
             options.add(correct.contains("/") ? (Integer.parseInt(correct.split("/")[0]) + bump) + "/" + correct.split("/")[1]
-                    : String.valueOf(Integer.parseInt(correct) + bump));
+                    : correct.contains(".") ? correct + bump
+                    : correct.matches("\\d+") ? String.valueOf(Integer.parseInt(correct) + bump) : correct + " " + bump);
             bump++;
         }
         List<String> list = new ArrayList<>(options);

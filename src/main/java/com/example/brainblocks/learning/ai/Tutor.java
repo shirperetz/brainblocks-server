@@ -34,7 +34,8 @@ public final class Tutor {
         if (fg != null) return fg;
         Matcher s = SERIES.matcher(q);
         if (s.find()) return series(Long.parseLong(s.group(3)), Long.parseLong(s.group(4)), v, q);
-        if (q.contains("המספר הגדול ביותר")) return comparison(v, q);
+        if (q.contains("המספר הגדול ביותר") || q.contains("המספר הקטן ביותר")) return comparison(v, q);
+        if (q.startsWith("מה המספר החסר")) return missingNumber(q, v);
         Matcher a = ARITH.matcher(q);
         if (a.find()) {
             return arithmetic(Long.parseLong(a.group(1)), a.group(2), Long.parseLong(a.group(3)), v, q);
@@ -48,6 +49,52 @@ public final class Tutor {
 
     /** Ways for שברים / גיאומטריה (FractionGeometryQuestions) - the method, never the answer. */
     static Way fractionOrGeometry(String q, int v) {
+        // 2026-11-11: the kinds added for "מכל הסוגים" - checked first ("0.3 + 0.4" is not "3 + 0").
+        if (q.matches(".*\\b0\\.\\d.*") || q.contains("מספר עשרוני")) {
+            return way(q, v == 0
+                    ? "0.3 זה 3 עשיריות. מחברים עשיריות כמו שמחברים מספרים רגילים, ושמים את הנקודה במקום."
+                    : "כדי לכתוב שבר כמספר עשרוני, מחפשים שבר שווה עם 10 למטה - המספר שלמעלה הוא מספר העשיריות.");
+        }
+        if (q.startsWith("איזה מספר חסר?") && FRACTION.matcher(q).find()) {
+            return way(q, v == 0
+                    ? "בדקו בכמה הוכפל המספר שלמטה. את המספר שלמעלה כופלים באותו מספר."
+                    : "שבר שווה נוצר כשכופלים למעלה ולמטה באותו מספר. מצאו את המספר הזה מהמספרים שלמטה.");
+        }
+        if (q.startsWith("צמצמו")) {
+            return way(q, v == 0
+                    ? "מחפשים מספר שמחלק גם את המספר שלמעלה וגם את שלמטה, ומחלקים את שניהם בו. ממשיכים עד שאין עוד מספר כזה."
+                    : "נסו לחלק את שניהם ב-2, אחר כך ב-3, ב-5... עד שאי אפשר יותר.");
+        }
+        if (q.matches(".*(חצי|שליש|רבע|חמישית) מהן.*")) {
+            return way(q, v == 0
+                    ? "חצי זה לחלק ל-2, שליש ל-3, רבע ל-4. מחלקים את הכמות לחלקים שווים ולוקחים חלק אחד."
+                    : "חלקו את הכמות לקבוצות שוות. אם שואלים כמה נשארו - מורידים מהכול את מה שנתנו.");
+        }
+        if (q.contains("היקף") && q.contains("הרוחב")) {
+            return way(q, v == 0
+                    ? "אורך ורוחב יחד הם חצי מההיקף. מחלקים את ההיקף ב-2, ומורידים את האורך."
+                    : "ההיקף הוא אורך + רוחב + אורך + רוחב. נסו רוחב, ובדקו אם יוצא ההיקף.");
+        }
+        if (q.contains("שטח") && q.contains("אורך הצלע")) {
+            return way(q, v == 0
+                    ? "שטח ריבוע = צלע × צלע. מחפשים מספר שכפול עצמו נותן את השטח."
+                    : "נסו: 5 × 5, 6 × 6, 7 × 7... איזה מהם יוצא בדיוק השטח?");
+        }
+        if (q.contains("קו ישר")) {
+            return way(q, v == 0
+                    ? "שתי זוויות צמודות על קו ישר יחד הן 180 מעלות. מחסרים מ-180 את הזווית הידועה."
+                    : "קו ישר הוא חצי סיבוב - 180 מעלות. כמה חסר לזווית שנתונה כדי להגיע ל-180?");
+        }
+        if (q.contains("ישר-זווית") && q.contains("החדה")) {
+            return way(q, v == 0
+                    ? "במשולש ישר-זווית יש זווית של 90°. שתי הזוויות האחרות יחד הן 90°."
+                    : "סכום הזוויות במשולש 180°. כבר יש 90° ועוד הזווית הנתונה - כמה חסר עד 180?");
+        }
+        if (q.startsWith("איך קוראים לצורה")) {
+            return way(q, v == 0
+                    ? "השם בא מהמספר: מחומש - חמש, משושה - שש, מתומן - שמונה. משולש - שלוש, מרובע - ארבע."
+                    : "חפשו בשם את המספר: ח-מ-ש במחומש, ש-ש במשושה, ש-מ-נ במתומן.");
+        }
         if (q.contains("צבוע")) {
             return way(q, v == 0
                     ? "סופרים לכמה חלקים שווים חולקה הצורה - זה המספר שלמטה בשבר. אחר כך סופרים את החלקים הצבועים - זה המספר שלמעלה."
@@ -157,7 +204,9 @@ public final class Tutor {
         }
         long tens = b - b % 10;
         long ones = b % 10;
-        return tens > 0 && ones > 0
+        // 2026-11-11 (test): 265 - 135 -> "קודם מורידים 130" - and 130 IS the answer. Never show it.
+        boolean revealsAnswer = tens == a - b || ones == a - b;
+        return tens > 0 && ones > 0 && !revealsAnswer
                 ? wayOf(q, "מורידים בשני צעדים: קודם מורידים מ-" + a + " את " + tens + ", ואחר כך מורידים עוד "
                         + ones + ".", List.of(a, tens, ones))
                 : way(q, "אפשר לספור מ-" + b + " קדימה עד " + a + " בקפיצות גדולות של עשרות, ואחר כך באחדות. "
@@ -202,6 +251,21 @@ public final class Tutor {
                         + ". עושים את אותו הדבר למספר האחרון, " + t4 + ".", t3, t4, ad)
                 : way(q, "בסדרה הזאת כל צעד הוא " + ad + ". מתחילים מ-" + t4 + " ו" + (d >= 0 ? "סופרים קדימה " : "סופרים אחורה ")
                         + steps(ad) + ".", t4, ad);
+    }
+
+    /** "מה המספר החסר? 7 + ? = 12" - think of the opposite operation, never say the number. */
+    private static Way missingNumber(String q, int v) {
+        String op = q.contains("+") ? "+" : q.contains("×") ? "×" : q.contains("÷") ? "÷" : "-";
+        boolean first = q.matches(".*\\?\\s*[+\\-×÷].*");
+        String opposite = switch (op) {
+            case "+" -> "חיסור: מהתוצאה מורידים את המספר שכבר ידוע";
+            case "-" -> first ? "חיבור: מחברים את התוצאה ואת המספר שהורידו" : "חיסור: מהמספר הגדול מורידים את התוצאה";
+            case "×" -> "חילוק: מחלקים את התוצאה במספר שכבר ידוע";
+            default -> first ? "כפל: כופלים את התוצאה במספר שמחלקים בו" : "חילוק: מחלקים את המספר הגדול בתוצאה";
+        };
+        return way(q, v == 0
+                ? "את המספר החסר מוצאים עם הפעולה ההפוכה - " + opposite + "."
+                : "נסו לשים מספר במקום סימן השאלה ולבדוק אם יוצאת התוצאה. אם יצא יותר מדי - נסו מספר קטן יותר.");
     }
 
     private static Way comparison(int v, String q) {
