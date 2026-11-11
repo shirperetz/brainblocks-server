@@ -39,8 +39,22 @@ public class ProfileResponse {
         return new ProfileResponse(
                 p.getId(), p.getName(), p.getAvatar(), p.getGrade(), p.getDifficulty(),
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
-        ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved());
+        ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved())
+                .withTeacher(p.isTeacher(), p.getClassId());
     }
+
+    /** 2026-11-11: a teacher sees the teachers' screen; a child's class (null = Shir's own). */
+    private boolean teacher;
+    private Long classId;
+
+    private ProfileResponse withTeacher(boolean teacher, Long classId) {
+        this.teacher = teacher;
+        this.classId = classId;
+        return this;
+    }
+
+    public boolean isTeacher() { return teacher; }
+    public Long getClassId() { return classId; }
 
     /** 2026-11-11: shown on the home screen ("מחובר/ת בתור ...") - never the password or token. */
     private String username;

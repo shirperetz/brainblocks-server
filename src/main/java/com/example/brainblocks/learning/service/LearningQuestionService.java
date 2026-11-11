@@ -50,6 +50,10 @@ public class LearningQuestionService {
                             ? fractionGeometry.geometryTrack(i, actual, s, true)
                     : buildQuestion(i, actual, g, d, s));
         }
+        // 2026-11-11: every question says which skill it practices (fractions/geometry tag themselves).
+        for (QuestionResponse q : questions) {
+            if (q.getSkill() == null) q.withSkill(Skills.of(null, q.getTopic(), s, q.getText()));
+        }
         return questions;
     }
 

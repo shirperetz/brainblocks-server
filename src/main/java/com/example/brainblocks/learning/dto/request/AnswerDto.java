@@ -29,4 +29,10 @@ public class AnswerDto {
     public void setTopic(String topic) { this.topic = topic; }
     public String getExplanation() { return explanation; }
     public void setExplanation(String explanation) { this.explanation = explanation; }
+
+    /** 2026-11-11: the question's skill tag, sent back as received (may be null - the server then recognises it). */
+    private String skill;
+
+    public String getSkill() { return skill; }
+    public void setSkill(String skill) { this.skill = skill; }
 }

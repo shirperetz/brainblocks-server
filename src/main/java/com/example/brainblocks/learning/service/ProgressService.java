@@ -6,7 +6,9 @@ import com.example.brainblocks.learning.dto.response.MapResponse;
 import com.example.brainblocks.learning.dto.response.MistakeDto;
 import com.example.brainblocks.learning.dto.response.SessionSummaryResponse;
 import com.example.brainblocks.learning.dto.response.StageDto;
+import com.example.brainblocks.learning.model.LearnerAnswer;
 import com.example.brainblocks.learning.model.LearnerMistake;
+import com.example.brainblocks.learning.repository.LearnerAnswerRepository;
 import com.example.brainblocks.learning.model.LearnerProfile;
 import com.example.brainblocks.learning.model.LearnerSession;
 import com.example.brainblocks.learning.model.LearnerStageProgress;
@@ -43,17 +45,20 @@ public class ProgressService {
     private final LearnerStageProgressRepository stageProgressRepository;
     private final LearnerSessionRepository sessionRepository;
     private final LearnerMistakeRepository mistakeRepository;
+    private final LearnerAnswerRepository answerRepository;
 
     public ProgressService(LearnerProfileService profileService,
                            LearnerProfileRepository profileRepository,
                            LearnerStageProgressRepository stageProgressRepository,
                            LearnerSessionRepository sessionRepository,
-                           LearnerMistakeRepository mistakeRepository) {
+                           LearnerMistakeRepository mistakeRepository,
+                           LearnerAnswerRepository answerRepository) {
         this.profileService = profileService;
         this.profileRepository = profileRepository;
         this.stageProgressRepository = stageProgressRepository;
         this.sessionRepository = sessionRepository;
         this.mistakeRepository = mistakeRepository;
+        this.answerRepository = answerRepository;
     }
 
     /** Builds the 6-stage map for a topic. Stage 1 is always open; absent rows are locked. */
@@ -117,6 +122,16 @@ public class ProgressService {
 
         // Persist mistakes (wrong answers) for the review screen. Not from the 60-second challenge:
         // quick taps against the clock are not "what was hard" (a test run left 55 of them).
+        // 2026-11-11: every answer, right or wrong, with its skill - for the progress screen.
+        List<LearnerAnswer> rows = new ArrayList<>(answers.size());
+        for (AnswerDto a : answers) {
+            Topic answerTopic = a.getTopic() != null ? parseTopic(a.getTopic()) : topic;
+            rows.add(new LearnerAnswer(profile.getId(), answerTopic,
+                    Skills.of(a.getSkill(), answerTopic, stage, a.getQuestionText()), stage, mode,
+                    a.isCorrect(), a.isHintUsed(), a.getQuestionText(), a.getChosenAnswer(), a.getCorrectAnswer()));
+        }
+        answerRepository.saveAll(rows);
+
         List<MistakeDto> mistakeDtos = new ArrayList<>();
         for (AnswerDto a : answers) {
             if (!a.isCorrect() && mode != SessionMode.TIMED) {

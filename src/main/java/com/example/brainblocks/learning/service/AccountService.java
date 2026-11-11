@@ -175,13 +175,77 @@ public class AccountService {
 
     public Session register(String joinCode, String username, String password, String name, String avatar,
                             String grade, String difficulty) {
-        String expected = this.joinCode;
-        if (expected.isEmpty() || joinCode == null
-                || !MessageDigest.isEqual(expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                        joinCode.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "קוד ההצטרפות לא נכון. בקשו אותו מההורים או מהמורה");
+        String code = joinCode == null ? "" : joinCode.trim();
+        // 2026-11-11: three kinds of code - Shir's (her own children), a class's (that teacher's
+        // children), the teachers' code (a teacher, waits for Shir).
+        if (sameCode(this.joinCode, code)) {
+            return register(username, password, name, avatar, grade, difficulty);
         }
-        return register(username, password, name, avatar, grade, difficulty);
+        if (classes != null && !code.isEmpty()) {
+            var cls = classes.findByJoinCode(code.toUpperCase()).filter(c -> !c.isClosed());
+            if (cls.isPresent()) {
+                Session s = register(username, password, name, avatar, grade, difficulty);
+                LearnerProfile p = profileService.findProfile(s.profile().getId());
+                p.setClassId(cls.get().getId());
+                repository.save(p);
+                return new Session(s.token(), ProfileResponse.fromEntity(p));
+            }
+        }
+        if (sameCode(teacherCode(), code)) {
+            Session s = register(username, password, name, "ROBOT", null, null);
+            LearnerProfile p = profileService.findProfile(s.profile().getId());
+            p.setTeacher(true);
+            repository.save(p);
+            return new Session(s.token(), ProfileResponse.fromEntity(p));
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "קוד ההצטרפות לא נכון. בקשו אותו מההורים או מהמורה");
+    }
+
+    private static boolean sameCode(String expected, String given) {
+        return expected != null && !expected.isEmpty() && given != null
+                && MessageDigest.isEqual(expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        given.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    // ---- classes and teachers (2026-11-11) ----
+
+    private com.example.brainblocks.learning.repository.LearnClassRepository classes;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setClasses(com.example.brainblocks.learning.repository.LearnClassRepository classes) {
+        this.classes = classes;
+    }
+
+    static final String TEACHER_CODE_KEY = "teacher_code";
+
+    /** The code teachers sign up with (Shir hands it out). Blank = closed. In the DB only. */
+    public String teacherCode() {
+        if (settings == null) return "";
+        return settings.findById(TEACHER_CODE_KEY).map(com.example.brainblocks.learning.model.AppSetting::getValue).orElse("");
+    }
+
+    public String changeTeacherCode(String code) {
+        String c = code == null ? "" : code.trim();
+        if (!c.isEmpty() && !c.matches("[\\p{IsHebrew}A-Za-z0-9]{6,20}")) {
+            throw bad("קוד מורים: 6 עד 20 אותיות או ספרות (ריק = סגור)");
+        }
+        if (!c.isEmpty() && (c.equals(joinCode) || (classes != null && classes.existsByJoinCode(c.toUpperCase())))) {
+            throw bad("הקוד הזה כבר בשימוש - בחרי קוד אחר");
+        }
+        if (settings != null) settings.save(new com.example.brainblocks.learning.model.AppSetting(TEACHER_CODE_KEY, c));
+        return c;
+    }
+
+    /** A fresh class code: 6 letters/digits without look-alikes (0/O, 1/I). */
+    public String newClassCode() {
+        String abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        for (int tries = 0; tries < 50; tries++) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 6; i++) sb.append(abc.charAt(random.nextInt(abc.length())));
+            String c = sb.toString();
+            if (!c.equals(joinCode) && !c.equals(teacherCode()) && (classes == null || !classes.existsByJoinCode(c))) return c;
+        }
+        throw new IllegalStateException("no free class code");
     }
 
     Session register(String username, String password, String name, String avatar, String grade, String difficulty) {

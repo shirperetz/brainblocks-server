@@ -68,22 +68,22 @@ final class FractionGeometryQuestions {
         // round use small numbers, the later ones grow (moderately).
         small = id < SMALL_FIRST;
         return switch (kind) {
-            case 1 -> shaded(id);
-            case 2 -> biggest(id, grade);
-            case 3 -> equivalent(id);
-            case 4 -> sameDenominator(id, grade);
-            case 5 -> partOf(id, grade);
-            case 7 -> missingInEquivalent(id);
-            case 8 -> simplify(id);
-            case 9 -> fractionStory(id, grade);
-            case 10 -> decimals(id);
-            case 11 -> divisionAsFraction(id);
-            case 12 -> fractionAsDivision(id);
-            case 13 -> divisionVersusOne(id);
-            case 14 -> writeFraction(id);
-            case 15 -> wholes(id);
-            case 16 -> wholesAndRemainder(id);
-            default -> differentDenominators(id);
+            case 1 -> shaded(id).withSkill("FRAC_SHADED");
+            case 2 -> biggest(id, grade).withSkill("FRAC_BIGGEST");
+            case 3 -> equivalent(id).withSkill("FRAC_EQUIVALENT");
+            case 4 -> sameDenominator(id, grade).withSkill("FRAC_SAME_DENOMINATOR");
+            case 5 -> partOf(id, grade).withSkill("FRAC_PART_OF");
+            case 7 -> missingInEquivalent(id).withSkill("FRAC_MISSING_EQUIVALENT");
+            case 8 -> simplify(id).withSkill("FRAC_SIMPLIFY");
+            case 9 -> fractionStory(id, grade).withSkill("FRAC_STORY");
+            case 10 -> decimals(id).withSkill("FRAC_DECIMALS");
+            case 11 -> divisionAsFraction(id).withSkill("FRAC_AS_DIVISION");
+            case 12 -> fractionAsDivision(id).withSkill("FRAC_AS_DIVISION");
+            case 13 -> divisionVersusOne(id).withSkill("FRAC_VS_ONE");
+            case 14 -> writeFraction(id).withSkill("FRAC_WRITE");
+            case 15 -> wholes(id).withSkill("FRAC_WHOLES");
+            case 16 -> wholesAndRemainder(id).withSkill("FRAC_WHOLES_REMAINDER");
+            default -> differentDenominators(id).withSkill("FRAC_DIFFERENT_DENOMINATORS");
         };
     }
 
@@ -454,27 +454,27 @@ final class FractionGeometryQuestions {
 
     private QuestionResponse geometryKind(int id, int kind) {
         return switch (kind) {
-            case 1 -> perimeter(id);
-            case 2 -> area(id);
-            case 3 -> square(id);
-            case 4 -> angles(id);
-            case 5 -> triangleArea(id);
-            case 6 -> sides(id);
-            case 7 -> trianglePerimeter(id);
-            case 8 -> missingSide(id);
-            case 9 -> squareSideFromArea(id);
-            case 10 -> straightAngle(id);
-            case 11 -> rightTriangleAngle(id);
-            case 13 -> angleType(id);
-            case 14 -> aroundPoint(id);
-            case 15 -> squarePerimeter(id);
-            case 16 -> squareArea(id);
-            case 17 -> areaFromPerimeter(id);
-            case 18 -> namedAngleDegrees(id);
-            case 19 -> whichAngleIs(id);
-            case 20 -> triangleType(id);
-            case 21 -> isoscelesAngles(id);
-            default -> shapeName(id);
+            case 1 -> perimeter(id).withSkill("PER_RECTANGLE");
+            case 2 -> area(id).withSkill("AREA_RECTANGLE");
+            case 3 -> square(id).withSkill("GEO_SQUARE");
+            case 4 -> angles(id).withSkill("ANG_TRIANGLE");
+            case 5 -> triangleArea(id).withSkill("AREA_RIGHT_TRIANGLE");
+            case 6 -> sides(id).withSkill("GEO_SIDES");
+            case 7 -> trianglePerimeter(id).withSkill("PER_TRIANGLE");
+            case 8 -> missingSide(id).withSkill("PER_MISSING_SIDE");
+            case 9 -> squareSideFromArea(id).withSkill("AREA_SIDE_FROM_AREA");
+            case 10 -> straightAngle(id).withSkill("ANG_STRAIGHT_LINE");
+            case 11 -> rightTriangleAngle(id).withSkill("ANG_RIGHT_TRIANGLE");
+            case 13 -> angleType(id).withSkill("ANG_TYPE");
+            case 14 -> aroundPoint(id).withSkill("ANG_AROUND_POINT");
+            case 15 -> squarePerimeter(id).withSkill("PER_SQUARE");
+            case 16 -> squareArea(id).withSkill("AREA_SQUARE");
+            case 17 -> areaFromPerimeter(id).withSkill("AREA_FROM_PERIMETER");
+            case 18 -> namedAngleDegrees(id).withSkill("ANG_NAMED_DEGREES");
+            case 19 -> whichAngleIs(id).withSkill("ANG_WHICH");
+            case 20 -> triangleType(id).withSkill("ANG_TRIANGLE_TYPE");
+            case 21 -> isoscelesAngles(id).withSkill("ANG_ISOSCELES");
+            default -> shapeName(id).withSkill("GEO_SHAPE_NAME");
         };
     }
 

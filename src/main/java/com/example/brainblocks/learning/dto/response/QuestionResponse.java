@@ -40,4 +40,14 @@ public class QuestionResponse {
     public String getHint() { return hint; }
     public String getExplanation() { return explanation; }
     public VisualModel getVisual() { return visual; }
+
+    /** 2026-11-11: the skill it practices (Skills.NAMES); the client sends it back with the answer. */
+    private String skill;
+
+    public String getSkill() { return skill; }
+
+    public QuestionResponse withSkill(String skill) {
+        this.skill = skill;
+        return this;
+    }
 }

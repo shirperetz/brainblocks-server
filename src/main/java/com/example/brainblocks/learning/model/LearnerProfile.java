@@ -153,4 +153,16 @@ public class LearnerProfile {
     public void setDisabled(boolean disabled) { this.disabled = disabled; }
     public boolean isApproved() { return !Boolean.FALSE.equals(approved); }
     public void setApproved(boolean approved) { this.approved = approved; }
+
+    // 2026-11-11 (Shir: "teachers see their students, I see mine, and I oversee everything").
+    /** null = a child; "TEACHER" = a teacher (signed up with the teachers' code, approved by the admin). */
+    @Column(length = 12)
+    private String role;
+    /** The child's class (learn_class.id); null = Shir's own children (no class yet). */
+    private Long classId;
+
+    public boolean isTeacher() { return "TEACHER".equals(role); }
+    public void setTeacher(boolean teacher) { this.role = teacher ? "TEACHER" : null; }
+    public Long getClassId() { return classId; }
+    public void setClassId(Long classId) { this.classId = classId; }
 }
