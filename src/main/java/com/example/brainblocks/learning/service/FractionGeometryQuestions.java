@@ -64,6 +64,9 @@ final class FractionGeometryQuestions {
             earlier.remove(Integer.valueOf(1));
         }
         int kind = pickKind(current, earlier, 14);
+        // 2026-11-11 (Shir: "start with small numbers - it's for learning"): the first questions of a
+        // round use small numbers, the later ones grow (moderately).
+        small = id < SMALL_FIRST;
         return switch (kind) {
             case 1 -> shaded(id);
             case 2 -> biggest(id, grade);
@@ -84,6 +87,15 @@ final class FractionGeometryQuestions {
         };
     }
 
+    /** Questions 0..4 of a round: small numbers; from the 6th on: a bit bigger. */
+    static final int SMALL_FIRST = 5;
+    private boolean small = true;
+
+    /** Upper bound by the round's progress: [smallMax] for the first questions, [max] later. */
+    private int upTo(int smallMax, int max) {
+        return small ? smallMax : max;
+    }
+
     // ---- לכתוב שבר, שלמים ושארית (2026-11-11, Shir) ----
 
     private static final String[] PART = {"", "", "חצי", "שליש", "רבע", "חמישית", "שישית", "שביעית", "שמינית", "תשיעית", "עשירית"};
@@ -100,7 +112,7 @@ final class FractionGeometryQuestions {
 
     /** "איך כותבים שלוש חמישיות?" -> 3/5, or the other way: "איך קוראים לשבר 3/5?" -> שלוש חמישיות. */
     private QuestionResponse writeFraction(int id) {
-        int d = rand(3, 10);
+        int d = rand(3, upTo(6, 10));
         int n = rand(1, d - 1);
         if (random.nextBoolean()) {
             List<String> wrong = new ArrayList<>(List.of(frac(d, n), frac(n, d + 1), frac(n + 1 < d ? n + 1 : n - 1 == 0 ? n + 2 : n - 1, d)));
@@ -121,8 +133,8 @@ final class FractionGeometryQuestions {
 
     /** "כמה שלמים הם 20/4?" - a fraction that is a whole number. */
     private QuestionResponse wholes(int id) {
-        int d = rand(2, 10);
-        int w = rand(2, 9);
+        int d = rand(2, upTo(5, 10));
+        int w = rand(2, upTo(5, 9));
         return text(id, Topic.FRACTIONS, "כמה שלמים הם " + frac(d * w, d) + "?", String.valueOf(w),
                 List.of(String.valueOf(d * w - d), String.valueOf(w + 1), String.valueOf(d)),
                 "השבר הוא חילוק: מחלקים את המספר שלמעלה במספר שלמטה. כל " + d + " חלקים הם שלם אחד.",
@@ -131,8 +143,8 @@ final class FractionGeometryQuestions {
 
     /** "כמה שלמים יש ב-17/5, וכמה נשאר?" -> 3 שלמים ושארית 2 (written also as 3 ו-2/5). */
     private QuestionResponse wholesAndRemainder(int id) {
-        int d = rand(2, 10);
-        int w = rand(1, 6);
+        int d = rand(2, upTo(5, 8));
+        int w = rand(1, upTo(3, 5));
         int r = rand(1, d - 1);
         int n = w * d + r;
         String correct = answerWR(w, r);
@@ -155,11 +167,11 @@ final class FractionGeometryQuestions {
 
     /** "כתבו את התרגיל 2 : 3 כשבר" - the dividend on top, the divisor below (0 : 3, 9 : 9 too). */
     private QuestionResponse divisionAsFraction(int id) {
-        int b = rand(2, 15);
+        int b = rand(2, upTo(6, 10));
         int a = switch (random.nextInt(6)) {
-            case 0 -> 0;              // 0 : 3 = 0/3
-            case 1 -> b;              // 9 : 9 = 9/9
-            case 2 -> b * rand(2, 4); // 20 : 4 = 20/4 (more than 1)
+            case 0 -> 0;                       // 0 : 3 = 0/3
+            case 1 -> b;                       // 9 : 9 = 9/9
+            case 2 -> b * rand(2, upTo(2, 3)); // 20 : 4 = 20/4 (more than 1)
             default -> rand(1, b - 1);
         };
         String correct = frac(a, b);
@@ -175,8 +187,8 @@ final class FractionGeometryQuestions {
 
     /** "כתבו את השבר 5/7 כתרגיל חילוק" - top : bottom. */
     private QuestionResponse fractionAsDivision(int id) {
-        int d = rand(2, 15);
-        int n = random.nextInt(5) == 0 ? 0 : random.nextInt(4) == 0 ? d * rand(1, 3) : rand(1, d - 1);
+        int d = rand(2, upTo(6, 12));
+        int n = random.nextInt(5) == 0 ? 0 : random.nextInt(4) == 0 ? d * rand(1, upTo(2, 3)) : rand(1, d - 1);
         String correct = n + " : " + d;
         List<String> wrong = new ArrayList<>();
         if (n != d && n != 0) wrong.add(d + " : " + n); // reversed
@@ -190,9 +202,9 @@ final class FractionGeometryQuestions {
 
     /** "התוצאה של 7 : 8 היא..." - smaller than, equal to or bigger than 1 (three options). */
     private QuestionResponse divisionVersusOne(int id) {
-        int b = rand(2, 15);
+        int b = rand(2, upTo(6, 12));
         int kind = random.nextInt(3);
-        int a = kind == 0 ? rand(1, b - 1) : kind == 1 ? b : b + rand(1, 2 * b);
+        int a = kind == 0 ? rand(1, b - 1) : kind == 1 ? b : b + rand(1, upTo(b, 2 * b));
         String[] all = {"קטנה מ-1", "שווה ל-1", "גדולה מ-1"};
         return new QuestionResponse(id, Topic.FRACTIONS, "התוצאה של " + a + " : " + b + " היא...",
                 new ArrayList<>(List.of(all)), kind,
@@ -212,7 +224,7 @@ final class FractionGeometryQuestions {
     private QuestionResponse missingInEquivalent(int id) {
         int[][] bases = {{1, 2}, {1, 3}, {2, 3}, {1, 4}, {3, 4}, {2, 5}, {3, 5}, {1, 6}, {5, 6}};
         int[] b = bases[random.nextInt(bases.length)];
-        int k = rand(2, 5);
+        int k = rand(2, upTo(3, 5));
         int answer = b[0] * k;
         return text(id, Topic.FRACTIONS, "איזה מספר חסר? " + frac(b[0], b[1]) + " = ?/" + b[1] * k, String.valueOf(answer),
                 List.of(String.valueOf(b[0] + k), String.valueOf(b[1] * k - b[0]), String.valueOf(answer + b[0])),
@@ -224,7 +236,7 @@ final class FractionGeometryQuestions {
     private QuestionResponse simplify(int id) {
         int[][] bases = {{1, 2}, {1, 3}, {2, 3}, {1, 4}, {3, 4}, {2, 5}, {3, 5}, {4, 5}, {5, 6}, {3, 7}};
         int[] b = bases[random.nextInt(bases.length)];
-        int k = rand(2, 5);
+        int k = rand(2, upTo(3, 5));
         String correct = frac(b[0], b[1]);
         int g = gcd(b[0] * k, b[1] * k);
         // Half-way (k = 4 -> divided by 2 only) is the real mistake; the others are near misses.
@@ -239,7 +251,7 @@ final class FractionGeometryQuestions {
         String[][] parts = {{"חצי", "2"}, {"שליש", "3"}, {"רבע", "4"}, {"חמישית", "5"}};
         String[] p = parts[random.nextInt(grade == Grade.G6 ? 4 : 3)];
         int d = Integer.parseInt(p[1]);
-        int whole = d * rand(2, 9);
+        int whole = d * rand(2, upTo(4, 9));
         String[] names = {"נועה", "דניאל", "מאיה", "יואב", "תמר", "איתי"};
         String[] things = {"סוכריות", "מדבקות", "קלפים", "גולות", "עפרונות"};
         String name = names[random.nextInt(names.length)];
@@ -275,7 +287,7 @@ final class FractionGeometryQuestions {
 
     /** "איזה חלק מהעיגול צבוע?" - picture: a pie or bar with n of d parts coloured. */
     private QuestionResponse shaded(int id) {
-        int d = rand(2, 8);
+        int d = rand(2, upTo(6, 8));
         int n = rand(1, d - 1);
         String correct = frac(n, d);
         List<String> wrong = List.of(frac(d - n, d), frac(n, d + 1), n == 1 ? frac(d, n + d) : frac(n - 1, d), frac(d, n));
@@ -315,7 +327,7 @@ final class FractionGeometryQuestions {
     private QuestionResponse equivalent(int id) {
         int[][] bases = {{1, 2}, {1, 3}, {2, 3}, {1, 4}, {3, 4}, {2, 5}};
         int[] b = bases[random.nextInt(bases.length)];
-        int k = rand(2, 4);
+        int k = rand(2, upTo(3, 4));
         String correct = frac(b[0] * k, b[1] * k);
         List<String> wrong = List.of(frac(b[0] * k, b[1] * k + 1), frac(b[0] + k, b[1] + k), frac(b[0] * k + 1, b[1] * k));
         return text(id, Topic.FRACTIONS, "איזה שבר שווה ל-" + frac(b[0], b[1]) + "?", correct, wrong,
@@ -325,7 +337,7 @@ final class FractionGeometryQuestions {
 
     /** "2/7 + 3/7 = ?" - only the numerators change. The classic mistake (adding the bottoms) is an option. */
     private QuestionResponse sameDenominator(int id, Grade grade) {
-        int d = rand(5, grade == Grade.G6 ? 12 : 10);
+        int d = rand(5, upTo(8, grade == Grade.G6 ? 12 : 10));
         boolean plus = random.nextBoolean();
         int a, b, r;
         if (plus) {
@@ -349,7 +361,7 @@ final class FractionGeometryQuestions {
     private QuestionResponse partOf(int id, Grade grade) {
         int d = new int[] {2, 3, 4, 5, 10}[random.nextInt(5)];
         int n = grade == Grade.G6 ? rand(1, d - 1) : (random.nextBoolean() ? 1 : rand(1, d - 1));
-        int whole = d * rand(2, grade == Grade.G6 ? 12 : 8);
+        int whole = d * rand(2, upTo(5, grade == Grade.G6 ? 12 : 8));
         int r = whole / d * n;
         List<String> wrong = new ArrayList<>(List.of(String.valueOf(whole / d), String.valueOf(whole - r), String.valueOf(r + whole / d)));
         wrong.remove(String.valueOf(r));
@@ -394,12 +406,15 @@ final class FractionGeometryQuestions {
      * 2026-11-11 (Shir: "angles one track, sides another"): geometry split into three tracks, each with
      * its own six levels (60% new / 40% earlier, like every topic). The old mixed GEOMETRY stays for
      * the mixed practice.
-     *  זוויות:      1 סוג זווית · 2 קו ישר · 3 משולש · 4 ישר-זווית · 5 סביב נקודה · 6 מעורב
+     *  זוויות:       1 סוג זווית · 2 כמה מעלות (ישרה/שטוחה/סיבוב) · 3 איזו זווית חדה/קהה · 4 סוג משולש · 5-6 מעורב
+     *  חישוב זוויות: 1 קו ישר · 2 משולש · 3 ישר-זווית · 4 סביב נקודה · 5 שווה-שוקיים · 6 מעורב
      *  צלעות והיקף: 1 צלעות ושמות · 2 היקף מלבן · 3 היקף משולש · 4 היקף ריבוע · 5 צלע חסרה · 6 מעורב
      *  שטח:         1 מלבן · 2 ריבוע · 3 צלע לפי שטח · 4 משולש ישר-זווית · 5 שטח מהיקף · 6 מעורב
      */
     private static final java.util.Map<Topic, int[][]> TRACK_LEVELS = java.util.Map.of(
-            Topic.ANGLES, new int[][] {{13}, {10}, {4}, {11}, {14}, {}},
+            // 2026-11-11 (Shir): "חישוב זוויות" separate - זוויות = recognizing, ANGLE_CALC = calculating.
+            Topic.ANGLES, new int[][] {{13}, {18}, {19}, {20}, {13, 18, 19, 20}, {}},
+            Topic.ANGLE_CALC, new int[][] {{10}, {4}, {11}, {14}, {21}, {}},
             Topic.PERIMETER, new int[][] {{6, 12}, {1}, {7}, {15}, {8}, {}},
             Topic.AREA, new int[][] {{2}, {16}, {9}, {5}, {17}, {}});
 
@@ -407,6 +422,7 @@ final class FractionGeometryQuestions {
     private Topic geoTopic = Topic.GEOMETRY;
 
     QuestionResponse geometryTrack(int id, Topic track, int stage, boolean withPicture) {
+        small = id < SMALL_FIRST; // first questions of a round: small numbers
         int[][] levels = TRACK_LEVELS.get(track);
         int s = Math.min(Math.max(stage, 1), 6);
         List<Integer> current = new ArrayList<>();
@@ -426,6 +442,7 @@ final class FractionGeometryQuestions {
     }
 
     QuestionResponse geometry(int id, int stage, boolean withPicture) {
+        small = id < SMALL_FIRST; // first questions of a round: small numbers
         int s = Math.min(Math.max(stage, 1), 6);
         List<Integer> current = new ArrayList<>();
         for (int k : GEOMETRY_LEVELS[s - 1]) current.add(k);
@@ -453,6 +470,10 @@ final class FractionGeometryQuestions {
             case 15 -> squarePerimeter(id);
             case 16 -> squareArea(id);
             case 17 -> areaFromPerimeter(id);
+            case 18 -> namedAngleDegrees(id);
+            case 19 -> whichAngleIs(id);
+            case 20 -> triangleType(id);
+            case 21 -> isoscelesAngles(id);
             default -> shapeName(id);
         };
     }
@@ -473,6 +494,69 @@ final class FractionGeometryQuestions {
                         + ", ולכן היא " + names[kind] + ".", null);
     }
 
+    /** "כמה מעלות יש בזווית ישרה?" - 90 / 180 / 360. */
+    private QuestionResponse namedAngleDegrees(int id) {
+        String[][] named = {{"בזווית ישרה", "90"}, {"בזווית שטוחה", "180"}, {"בסיבוב שלם", "360"}, {"בחצי סיבוב", "180"}, {"ברבע סיבוב", "90"}};
+        String[] q = named[random.nextInt(named.length)];
+        int r = Integer.parseInt(q[1]);
+        return number(id, "כמה מעלות יש " + q[0] + "?", r, List.of(90, 180, 360, 45).stream().filter(x -> x != r).toList(),
+                "זווית ישרה = פינה של דף (90°). שתי ישרות = קו ישר, זווית שטוחה (180°). ארבע ישרות = סיבוב שלם (360°).",
+                q[0].substring(1) + " יש " + r + "°.", null);
+    }
+
+    /** "איזו מהזוויות קהה?" - pick the one of the right type among four sizes. */
+    private QuestionResponse whichAngleIs(int id) {
+        int kind = random.nextInt(2); // 0 = חדה, 1 = קהה
+        int acute = 5 * rand(2, 17), obtuse = 5 * rand(19, 35);
+        int correct = kind == 0 ? acute : obtuse;
+        List<Integer> wrong = kind == 0
+                ? List.of(90, obtuse, 5 * rand(19, 35) == obtuse ? 180 : obtuse + 5 > 175 ? 180 : obtuse + 5)
+                : List.of(90, acute, 180);
+        List<String> w = new ArrayList<>();
+        for (int x : wrong) w.add(x + "°");
+        return text(id, geoTopic, "איזו מהזוויות היא זווית " + (kind == 0 ? "חדה" : "קהה") + "?", correct + "°", w,
+                kind == 0 ? "זווית חדה קטנה מ-90° (צרה יותר מפינה של דף)." : "זווית קהה גדולה מ-90° אבל קטנה מ-180°.",
+                correct + "° " + (kind == 0 ? "קטנה מ-90°" : "בין 90° ל-180°") + ", ולכן היא " + (kind == 0 ? "חדה" : "קהה") + ".", null);
+    }
+
+    /** "במשולש יש זווית של 120°. זה משולש..." - קהה-זווית / ישר-זווית / חד-זווית. */
+    private QuestionResponse triangleType(int id) {
+        int kind = random.nextInt(3);
+        int a, b;
+        if (kind == 0) {          // all acute
+            a = 5 * rand(9, 16);  // 45-80
+            b = 5 * rand(Math.max(9, 19 - a / 5), 16);
+        } else if (kind == 1) {   // right
+            a = 90;
+            b = 5 * rand(4, 13);
+        } else {                  // obtuse
+            a = 5 * rand(19, 28); // 95-140
+            b = 5 * rand(2, Math.max(2, (170 - a) / 5));
+        }
+        int c = 180 - a - b;
+        String[] names = {"חד-זווית", "ישר-זווית", "קהה-זווית"};
+        return new QuestionResponse(id, geoTopic, "למשולש יש זוויות של " + a + "°, " + b + "° ו-" + c + "°. זה משולש...",
+                new ArrayList<>(List.of(names)), kind,
+                "מסתכלים על הזווית הגדולה: אם יש זווית של 90° - ישר-זווית, אם יש זווית גדולה מ-90° - קהה-זווית, ואם כולן קטנות מ-90° - חד-זווית.",
+                "הזווית הגדולה היא " + Math.max(a, Math.max(b, c)) + "°, ולכן זה משולש " + names[kind] + ".", null);
+    }
+
+    /** Isosceles: the two base angles are equal - from the top angle, or the other way. */
+    private QuestionResponse isoscelesAngles(int id) {
+        if (random.nextBoolean()) {
+            int top = 10 * rand(2, upTo(10, 14)); // 20-100/140
+            int r = (180 - top) / 2;
+            return number(id, "במשולש שווה-שוקיים זווית הראש היא " + top + "°. כמה מעלות כל אחת מזוויות הבסיס?", r,
+                    List.of(180 - top, 90 - top / 2 + 10, top), "שתי זוויות הבסיס שוות. מ-180° מורידים את זווית הראש, ומחלקים את מה שנשאר ל-2.",
+                    "180 - " + top + " = " + (180 - top) + ", ולחלק ל-2: " + r + "°.", null);
+        }
+        int baseAngle = 5 * rand(6, 17); // 30-85
+        int r = 180 - 2 * baseAngle;
+        return number(id, "במשולש שווה-שוקיים כל זווית בסיס היא " + baseAngle + "°. כמה מעלות זווית הראש?", r,
+                List.of(180 - baseAngle, baseAngle, r + 10), "שתי זוויות הבסיס שוות - יחד הן פעמיים " + baseAngle + "°. מה שחסר עד 180° הוא זווית הראש.",
+                "2 × " + baseAngle + " = " + 2 * baseAngle + ", ו-180 - " + 2 * baseAngle + " = " + r + "°.", null);
+    }
+
     /** Three angles around a point make 360°. */
     private QuestionResponse aroundPoint(int id) {
         int a = 10 * rand(5, 15), b = 10 * rand(4, 33 - a / 10 - 2);
@@ -484,14 +568,14 @@ final class FractionGeometryQuestions {
     }
 
     private QuestionResponse squarePerimeter(int id) {
-        int s = rand(2, 15);
+        int s = rand(2, upTo(6, 15));
         return number(id, "מה ההיקף של ריבוע שצלעו " + s + " ס\"מ?", 4 * s,
                 List.of(s * s == 4 * s ? s * s + 1 : s * s, 2 * s, 3 * s), "לריבוע 4 צלעות שוות - היקף = 4 × צלע.",
                 "4 × " + s + " = " + 4 * s + " ס\"מ.", new VisualModel("SQUARE", null, s, s, 0, null));
     }
 
     private QuestionResponse squareArea(int id) {
-        int s = rand(2, 12);
+        int s = rand(2, upTo(6, 12));
         return number(id, "מה השטח של ריבוע שצלעו " + s + " ס\"מ? (בסמ\"ר)", s * s,
                 List.of(4 * s == s * s ? s * s + s : 4 * s, 2 * s, s * s + s), "שטח ריבוע = צלע × צלע.",
                 s + " × " + s + " = " + s * s + " סמ\"ר.", new VisualModel("SQUARE", null, s, s, 0, null));
@@ -499,7 +583,7 @@ final class FractionGeometryQuestions {
 
     /** "ההיקף של מלבן 26 ס"מ ואורכו 8. מה השטח?" - first the width, then length × width. */
     private QuestionResponse areaFromPerimeter(int id) {
-        int w = rand(4, 12), h = rand(2, 9);
+        int w = rand(4, upTo(7, 12)), h = rand(2, upTo(5, 9));
         if (w == h) w++;
         int p = 2 * (w + h);
         return number(id, "ההיקף של מלבן הוא " + p + " ס\"מ ואורכו " + w + " ס\"מ. מה השטח שלו? (בסמ\"ר)", w * h,
@@ -508,7 +592,7 @@ final class FractionGeometryQuestions {
     }
 
     private QuestionResponse trianglePerimeter(int id) {
-        int a = rand(3, 12), b = rand(3, 12), c = rand(Math.abs(a - b) + 1, a + b - 1);
+        int a = rand(3, upTo(8, 12)), b = rand(3, upTo(8, 12)), c = rand(Math.abs(a - b) + 1, a + b - 1);
         int r = a + b + c;
         return number(id, "למשולש יש צלעות באורך " + a + ", " + b + " ו-" + c + " ס\"מ. מה ההיקף שלו?", r,
                 List.of(a + b, a * b, r + 1), "היקף = מחברים את כל הצלעות מסביב. למשולש יש 3 צלעות.",
@@ -517,7 +601,7 @@ final class FractionGeometryQuestions {
 
     /** "היקף מלבן 30 ס"מ, אורכו 9. מה רוחבו?" - half the perimeter, minus the length. */
     private QuestionResponse missingSide(int id) {
-        int w = rand(4, 15), h = rand(2, 12);
+        int w = rand(4, upTo(9, 15)), h = rand(2, upTo(6, 12));
         if (w == h) w++;
         int p = 2 * (w + h);
         return number(id, "ההיקף של מלבן הוא " + p + " ס\"מ, ואורכו " + w + " ס\"מ. מה הרוחב שלו?", h,
@@ -526,7 +610,7 @@ final class FractionGeometryQuestions {
     }
 
     private QuestionResponse squareSideFromArea(int id) {
-        int s = rand(2, 12);
+        int s = rand(2, upTo(6, 12));
         return number(id, "השטח של ריבוע הוא " + s * s + " סמ\"ר. מה אורך הצלע שלו?", s,
                 List.of(s * s / 4 == s ? s + 2 : s * s / 4, s * s / 2, s + 1), "איזה מספר כפול עצמו נותן את השטח?",
                 s + " × " + s + " = " + s * s + ", אז הצלע היא " + s + " ס\"מ.", null);
@@ -560,7 +644,7 @@ final class FractionGeometryQuestions {
     }
 
     private QuestionResponse perimeter(int id) {
-        int w = rand(3, 15), h = rand(2, 12);
+        int w = rand(3, upTo(8, 15)), h = rand(2, upTo(6, 12));
         if (w == h) w++;
         int r = 2 * (w + h);
         return number(id, "מה ההיקף של מלבן שאורכו " + w + " ס\"מ ורוחבו " + h + " ס\"מ?", r,
@@ -570,7 +654,7 @@ final class FractionGeometryQuestions {
     }
 
     private QuestionResponse area(int id) {
-        int w = rand(3, 12), h = rand(2, 9);
+        int w = rand(3, upTo(7, 12)), h = rand(2, upTo(5, 9));
         if (w == h) w++;
         int r = w * h;
         return number(id, "מה השטח של מלבן שאורכו " + w + " ס\"מ ורוחבו " + h + " ס\"מ? (בסמ\"ר)", r,
@@ -580,7 +664,7 @@ final class FractionGeometryQuestions {
     }
 
     private QuestionResponse square(int id) {
-        int s = rand(2, 12);
+        int s = rand(2, upTo(6, 12));
         boolean askArea = random.nextBoolean();
         int r = askArea ? s * s : 4 * s;
         return number(id, (askArea ? "מה השטח" : "מה ההיקף") + " של ריבוע שצלעו " + s + " ס\"מ?" + (askArea ? " (בסמ\"ר)" : ""), r,
@@ -600,7 +684,7 @@ final class FractionGeometryQuestions {
     }
 
     private QuestionResponse triangleArea(int id) {
-        int base = 2 * rand(2, 8), height = rand(2, 10);
+        int base = 2 * rand(2, upTo(4, 8)), height = rand(2, upTo(6, 10));
         int r = base * height / 2;
         return number(id, "מה השטח של משולש ישר-זווית שבסיסו " + base + " ס\"מ וגובהו " + height + " ס\"מ? (בסמ\"ר)", r,
                 List.of(base * height, base + height, r + base),

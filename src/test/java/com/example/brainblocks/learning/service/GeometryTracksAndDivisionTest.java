@@ -23,7 +23,7 @@ class GeometryTracksAndDivisionTest {
 
     @Test
     void everyTrackQuestionIsRightAndBelongsToItsTrack() {
-        for (Topic track : List.of(Topic.ANGLES, Topic.PERIMETER, Topic.AREA)) {
+        for (Topic track : List.of(Topic.ANGLES, Topic.ANGLE_CALC, Topic.PERIMETER, Topic.AREA)) {
             for (long seed = 0; seed < 800; seed++) {
                 FractionGeometryQuestions gen = new FractionGeometryQuestions(new Random(seed));
                 for (int stage = 1; stage <= 6; stage++) {
@@ -41,13 +41,36 @@ class GeometryTracksAndDivisionTest {
                         assertThat(correct).as(t).isEqualTo(expected);
                         continue;
                     }
+                    if (t.startsWith("איזו מהזוויות")) {
+                        int deg = Integer.parseInt(correct.replace("°", ""));
+                        assertThat(t.contains("חדה") ? deg < 90 : deg > 90 && deg < 180).as(t + " " + correct).isTrue();
+                        for (String o : q.getOptions()) {
+                            if (o.equals(correct)) continue;
+                            int x = Integer.parseInt(o.replace("°", ""));
+                            assertThat(t.contains("חדה") ? x < 90 : x > 90 && x < 180).as("only one fits: " + t + " " + q.getOptions()).isFalse();
+                        }
+                        continue;
+                    }
+                    if (t.startsWith("למשולש יש זוויות")) {
+                        assertThat(n.get(0) + n.get(1) + n.get(2)).as(t).isEqualTo(180);
+                        int big = Math.max(n.get(0), Math.max(n.get(1), n.get(2)));
+                        assertThat(correct).as(t).isEqualTo(big < 90 ? "חד-זווית" : big == 90 ? "ישר-זווית" : "קהה-זווית");
+                        assertThat(n).as(t).allMatch(x -> x > 0);
+                        continue;
+                    }
                     if (t.startsWith("איך קוראים לצורה")) {
                         assertThat(track).isEqualTo(Topic.PERIMETER);
                         continue;
                     }
                     int answer = Integer.parseInt(correct);
                     assertThat(answer).as(t).isPositive();
-                    if (t.contains("סביב נקודה")) {
+                    if (t.startsWith("כמה מעלות יש")) {
+                        assertThat(answer).as(t).isEqualTo(t.contains("סיבוב שלם") ? 360 : t.contains("שטוחה") || t.contains("חצי סיבוב") ? 180 : 90);
+                    } else if (t.contains("שווה-שוקיים") && t.contains("זווית הראש היא")) {
+                        assertThat(2 * answer + n.get(0)).as(t).isEqualTo(180);
+                    } else if (t.contains("שווה-שוקיים")) {
+                        assertThat(answer + 2 * n.get(0)).as(t).isEqualTo(180);
+                    } else if (t.contains("סביב נקודה")) {
                         assertThat(answer).as(t).isEqualTo(360 - n.get(0) - n.get(1));
                     } else if (t.contains("קו ישר")) {
                         assertThat(answer).as(t).isEqualTo(180 - n.get(0));
@@ -77,7 +100,7 @@ class GeometryTracksAndDivisionTest {
                         assertThat(answer).as(t).isEqualTo(n.get(0) * n.get(1));
                     }
                     // the track's own subject only
-                    if (track == Topic.ANGLES) assertThat(t).as(t).containsAnyOf("זווי", "°");
+                    if (track == Topic.ANGLES || track == Topic.ANGLE_CALC) assertThat(t).as(t).containsAnyOf("זווי", "°", "מעלות");
                     if (track == Topic.AREA) assertThat(t).as(t).containsAnyOf("שטח");
                     if (track == Topic.PERIMETER) assertThat(t).as(t).doesNotContain("שטח").doesNotContain("°");
                 }
@@ -184,5 +207,28 @@ class GeometryTracksAndDivisionTest {
         assertThat(FractionGeometryQuestions.fractionWords(3, 4)).isEqualTo("שלושה רבעים");
         assertThat(FractionGeometryQuestions.fractionWords(1, 8)).isEqualTo("שמינית");
         assertThat(FractionGeometryQuestions.fractionWords(7, 10)).isEqualTo("שבע עשיריות");
+    }
+
+    /** 2026-11-11 (Shir: "start with small numbers - it's for learning"): the first questions of a round are small. */
+    @Test
+    void aRoundStartsWithSmallNumbers() {
+        Pattern frac = Pattern.compile("(\\d+)/(\\d+)");
+        for (long seed = 0; seed < 800; seed++) {
+            FractionGeometryQuestions gen = new FractionGeometryQuestions(new Random(seed));
+            for (int id = 0; id < FractionGeometryQuestions.SMALL_FIRST; id++) {
+                String t = gen.fraction(id, Grade.G5, 3, true).getText();
+                Matcher m = frac.matcher(t);
+                if (t.startsWith("כמה שלמים") && m.find()) {
+                    assertThat(Integer.parseInt(m.group(1))).as(t).isLessThanOrEqualTo(25);
+                    assertThat(Integer.parseInt(m.group(2))).as(t).isLessThanOrEqualTo(5);
+                }
+                QuestionResponse area = gen.geometryTrack(id, Topic.AREA, 1, true);
+                assertThat(Integer.parseInt(area.getOptions().get(area.getCorrectIndex()))).as(area.getText()).isLessThanOrEqualTo(35);
+                QuestionResponse per = gen.geometryTrack(id, Topic.PERIMETER, 2, true);
+                if (per.getText().startsWith("מה ההיקף של מלבן")) {
+                    assertThat(Integer.parseInt(per.getOptions().get(per.getCorrectIndex()))).as(per.getText()).isLessThanOrEqualTo(28);
+                }
+            }
+        }
     }
 }
