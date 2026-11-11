@@ -570,7 +570,7 @@ final class FractionGeometryQuestions {
     private QuestionResponse squarePerimeter(int id) {
         int s = rand(2, upTo(6, 15));
         return number(id, "מה ההיקף של ריבוע שצלעו " + s + " ס\"מ?", 4 * s,
-                List.of(s * s == 4 * s ? s * s + 1 : s * s, 2 * s, 3 * s), "לריבוע 4 צלעות שוות - היקף = 4 × צלע.",
+                balanced(4 * s, List.of(2 * s, 3 * s, 4 * s - 2, s * s), List.of(s * s, 5 * s, 4 * s + 2, 4 * s + 4)), "לריבוע 4 צלעות שוות - היקף = 4 × צלע.",
                 "4 × " + s + " = " + 4 * s + " ס\"מ.", new VisualModel("SQUARE", null, s, s, 0, null));
     }
 
@@ -605,7 +605,8 @@ final class FractionGeometryQuestions {
         if (w == h) w++;
         int p = 2 * (w + h);
         return number(id, "ההיקף של מלבן הוא " + p + " ס\"מ, ואורכו " + w + " ס\"מ. מה הרוחב שלו?", h,
-                List.of(p - w, p / 2, p - 2 * w), "אורך ורוחב יחד הם חצי מההיקף. מחצי ההיקף מורידים את האורך.",
+                // 2026-11-11: all three were bigger than the answer - "pick the smallest" got 67%.
+                List.of(h > 1 ? h - 1 : p / 2, 2 * h == p / 2 ? h + 1 : 2 * h, p / 2), "אורך ורוחב יחד הם חצי מההיקף. מחצי ההיקף מורידים את האורך.",
                 p + " ÷ 2 = " + (w + h) + ", ו-" + (w + h) + " - " + w + " = " + h + " ס\"מ.", null);
     }
 
@@ -648,7 +649,8 @@ final class FractionGeometryQuestions {
         if (w == h) w++;
         int r = 2 * (w + h);
         return number(id, "מה ההיקף של מלבן שאורכו " + w + " ס\"מ ורוחבו " + h + " ס\"מ?", r,
-                List.of(w + h, w * h, 2 * w + h),
+                // 2026-11-11: the right answer's place among the mistakes is random ("pick the middle" got 52%).
+                balanced(r, List.of(w + h, 2 * w + h, w + 2 * h, r - 2), List.of(w * h, r + w, r + h, r + 2)),
                 "היקף = כל הצלעות מסביב. במלבן יש 2 אורכים ו-2 רוחבים.",
                 w + " + " + h + " + " + w + " + " + h + " = " + r + " ס\"מ.", new VisualModel("RECT", null, w, h, 0, null));
     }
@@ -697,12 +699,29 @@ final class FractionGeometryQuestions {
     private QuestionResponse sides(int id) {
         int n = new int[] {3, 4, 5, 6, 8}[random.nextInt(5)];
         String[] names = {"", "", "", "משולש", "מרובע", "מחומש", "משושה", "", "מתומן"};
-        return number(id, "כמה צלעות יש לצורה?", n, List.of(n - 1, n + 1, n == 8 ? 6 : n + 2),
+        return number(id, "כמה צלעות יש לצורה?", n, balanced(n, List.of(n - 1, n - 2), List.of(n + 1, n + 2, n + 3)),
                 "צלע היא קו ישר אחד בשפת הצורה. סופרים אותן מסביב.",
                 "יש " + n + " צלעות - זה " + names[n] + ".", new VisualModel("POLYGON", null, n, 0, 0, null));
     }
 
     // ---- helpers --------------------------------------------------------------------------------
+
+    /**
+     * Three wrong answers - real mistakes from [below] (smaller than the right one) and [above] - with a
+     * random number of them below, so the right answer's place (smallest ... biggest) gives nothing
+     * away (2026-11-11, the "sneaky child" audit).
+     */
+    private List<Integer> balanced(int correct, List<Integer> below, List<Integer> above) {
+        List<Integer> lo = new ArrayList<>(new LinkedHashSet<>(below.stream().filter(x -> x >= 0 && x < correct).toList()));
+        List<Integer> hi = new ArrayList<>(new LinkedHashSet<>(above.stream().filter(x -> x > correct).toList()));
+        Collections.shuffle(lo, random);
+        Collections.shuffle(hi, random);
+        int min = Math.max(0, 3 - hi.size()), max = Math.min(3, lo.size());
+        int k = max < min ? lo.size() : min + random.nextInt(max - min + 1);
+        List<Integer> out = new ArrayList<>(lo.subList(0, Math.min(k, lo.size())));
+        out.addAll(hi.subList(0, Math.min(3 - out.size(), hi.size())));
+        return out;
+    }
 
     static String frac(int n, int d) {
         return n + "/" + d;

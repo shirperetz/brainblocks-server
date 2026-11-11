@@ -122,7 +122,8 @@ public class LearningQuestionService {
             default -> hideFirst ? "איזה מספר מחלקים ב-" + b + " ומקבלים " + r + "? כפלו " + b + " ב-" + r + "."
                     : "את " + a + " מחלקים לקבוצות שוות ומקבלים " + r + ". בכמה מחלקים?";
         };
-        return build(q.getId(), q.getTopic(), text, hidden, Math.max(2, hidden / 5 + 2), hint,
+        return build(q.getId(), q.getTopic(), text, hidden,
+                op.equals("+") || op.equals("-") ? additivePool(hidden, a >= 10 || b >= 10 || r >= 10) : nearPool(hidden, 1), hint,
                 (hideFirst ? hidden + " " + op + " " + b : a + " " + op + " " + hidden) + " = " + r, null);
     }
 
@@ -143,7 +144,7 @@ public class LearningQuestionService {
                 : null;
         return build(id, Topic.ADDITION,
                 "כמה זה " + a + " + " + b + "?",
-                result, additiveSpread(result),
+                result, additivePool(result, a >= 10 || b >= 10),
                 "תתחיל מ־" + a + " ותספור עוד " + b + " צעדים קדימה",
                 a + " ועוד " + b + " זה " + result,
                 visual);
@@ -159,7 +160,7 @@ public class LearningQuestionService {
                 : null;
         return build(id, Topic.SUBTRACTION,
                 "כמה זה " + a + " - " + b + "?",
-                result, additiveSpread(a),
+                result, additivePool(result, a >= 10 || b >= 10),
                 "תתחיל מ־" + a + " ותלך " + b + " צעדים אחורה",
                 a + " פחות " + b + " זה " + result,
                 visual);
@@ -175,7 +176,7 @@ public class LearningQuestionService {
                 : null;
         return build(id, Topic.MULTIPLICATION,
                 "כמה זה " + a + " × " + b + "?",
-                result, Math.max(2, a + b),
+                result, multiplicationPool(a, b),
                 "זה כמו " + a + " קבוצות של " + b,
                 a + " כפול " + b + " זה " + result,
                 visual);
@@ -188,7 +189,7 @@ public class LearningQuestionService {
         int a = b * result;
         return build(id, Topic.DIVISION,
                 "כמה זה " + a + " ÷ " + b + "?",
-                result, Math.max(2, result),
+                result, nearPool(result, 1),
                 "כמה פעמים " + b + " נכנס בתוך " + a + "?",
                 a + " חלקי " + b + " זה " + result,
                 null);
@@ -198,9 +199,15 @@ public class LearningQuestionService {
         int max = scaled(additiveMax(grade), stage, diff);
         // Four distinct numbers; the child picks the biggest.
         Set<Integer> nums = new LinkedHashSet<>();
-        while (nums.size() < 4) {
-            nums.add(rand(1, max));
+        // 2026-11-11: from level 3 all four have the same number of digits - "the longest one" stops working.
+        int digits = String.valueOf(max).length();
+        int from = stage >= 3 && max >= 20 ? (int) Math.pow(10, digits - 1) : 1;
+        if (from >= max) from = Math.max(1, from / 10);
+        int guard = 0;
+        while (nums.size() < 4 && guard++ < 1000) {
+            nums.add(rand(from, max));
         }
+        for (int x = from; nums.size() < 4; x++) nums.add(x);
         List<Integer> options = new ArrayList<>(nums);
         // 2026-11-11: from level 2, half ask for the smallest.
         boolean smallest = stage >= 2 && random.nextBoolean();
@@ -230,7 +237,7 @@ public class LearningQuestionService {
         int next = start + 4 * s;
         return build(id, Topic.SEQUENCES,
                 "מה המספר הבא? " + t1 + ", " + t2 + ", " + t3 + ", " + t4 + ", ?",
-                next, Math.max(2, step + 1),
+                next, sequencePool(next, step),
                 down ? "תבדוק כמה מורידים בכל פעם" : "תבדוק כמה מוסיפים בכל פעם",
                 (down ? "מורידים " : "מוסיפים ") + step + " בכל פעם, אז הבא הוא " + next,
                 null);
@@ -248,7 +255,7 @@ public class LearningQuestionService {
                 int result = a - b;
                 yield build(id, Topic.WORD_PROBLEMS,
                         "ל" + name + " היו " + a + " " + obj + ". " + b + " " + obj + " הלכו לאיבוד. כמה נשארו?",
-                        result, additiveSpread(a),
+                        result, additivePool(result, a >= 10 || b >= 10),
                         "מתחילים מ־" + a + " ומורידים " + b,
                         a + " פחות " + b + " זה " + result, null);
             }
@@ -258,7 +265,7 @@ public class LearningQuestionService {
                 int result = a * b;
                 yield build(id, Topic.WORD_PROBLEMS,
                         "ל" + name + " יש " + a + " שקיות, ובכל שקית " + b + " " + obj + ". כמה " + obj + " יש בסך הכל?",
-                        result, Math.max(2, a + b),
+                        result, multiplicationPool(a, b),
                         "זה כמו " + a + " קבוצות של " + b,
                         a + " כפול " + b + " זה " + result, null);
             }
@@ -268,7 +275,7 @@ public class LearningQuestionService {
                 int result = a + b;
                 yield build(id, Topic.WORD_PROBLEMS,
                         "ל" + name + " יש " + a + " " + obj + ", " + (GIRLS.contains(name) ? "וקיבלה" : "וקיבל") + " עוד " + b + ". כמה " + obj + " יש ל" + name + " עכשיו?",
-                        result, additiveSpread(result),
+                        result, additivePool(result, a >= 10 || b >= 10),
                         "מחברים " + a + " ועוד " + b,
                         a + " ועוד " + b + " זה " + result, null);
             }
@@ -277,14 +284,111 @@ public class LearningQuestionService {
 
     // ---- Helpers ------------------------------------------------------------
 
-    /** Builds a numeric question: correct answer + 3 nearby distractors, shuffled. */
-    private QuestionResponse build(int id, Topic topic, String text, int correct, int spread,
+    /**
+     * Builds a numeric question: the correct answer + 3 wrong ones from [pool], shuffled.
+     * <p>
+     * 2026-11-11 (Shir: "be a child and outsmart it - children must really calculate"). A "sneaky
+     * child" bot (KidTricksAuditTest) beat the old random-nearby wrong answers WITHOUT solving:
+     * computing only the last digit got 90% of addition/subtraction, "pick the one in the middle"
+     * 50-61% almost everywhere, a rough estimate 75% of division. Now the wrong answers are the
+     * mistakes children really make (a forgotten carry = ±10, the next row of the times table, one
+     * step too many), and the correct answer's place among them (smallest ... biggest) is random.
+     */
+    private QuestionResponse build(int id, Topic topic, String text, int correct, List<Integer> pool,
                                    String hint, String explanation, VisualModel visual) {
-        List<Integer> options = new ArrayList<>(distractors(correct, spread, 3));
+        // A pool of exactly three is already the chosen set (additivePool places the right answer itself).
+        List<Integer> options = new ArrayList<>(pool.size() == 3 && pool.stream().allMatch(x -> x >= 0 && x != correct)
+                && new LinkedHashSet<>(pool).size() == 3 ? pool : pickBalanced(correct, pool));
         options.add(correct);
         Collections.shuffle(options, random);
         List<String> strOptions = options.stream().map(String::valueOf).toList();
         return new QuestionResponse(id, topic, text, strOptions, options.indexOf(correct), hint, explanation, visual);
+    }
+
+    /**
+     * Three wrong answers from the pool so that the correct one is equally often the smallest, 2nd,
+     * 3rd or biggest - "pick the middle" / "pick the biggest" stop working. Topped up with ±1, ±2...
+     */
+    private List<Integer> pickBalanced(int correct, List<Integer> pool) {
+        List<Integer> below = new ArrayList<>(), above = new ArrayList<>();
+        for (int x : new LinkedHashSet<>(pool)) {
+            if (x < 0 || x == correct) continue;
+            (x < correct ? below : above).add(x);
+        }
+        for (int extra = 1; below.size() + above.size() < 3 || above.size() < 3 - Math.min(3, below.size()); extra++) {
+            if (!above.contains(correct + extra) && !below.contains(correct + extra)) above.add(correct + extra);
+        }
+        int lo = Math.max(0, 3 - above.size()), hi = Math.min(3, below.size());
+        int k = lo + random.nextInt(hi - lo + 1); // how many wrong answers are smaller than the right one
+        Collections.shuffle(below, random);
+        Collections.shuffle(above, random);
+        List<Integer> out = new ArrayList<>(below.subList(0, k));
+        out.addAll(above.subList(0, 3 - k));
+        return out;
+    }
+
+    /**
+     * + / - with two-digit numbers: a carry/borrow slip (±10), a second place-value slip (±20, or ±100
+     * in big numbers) - both keep the ones digit - and a counting slip (±1 / ±2). "Only the last
+     * digit" leaves three answers, "a rough estimate" leaves the close ones: the child has to work it
+     * out. Single digits: one, two, three away. The right answer's place is random ({@link #placed}).
+     */
+    private List<Integer> additivePool(int correct, boolean multiDigit) {
+        if (!multiDigit) return nearPool(correct, 1);
+        int[] size = {10, correct >= 200 && random.nextBoolean() ? 100 : 20, rand(1, 2)};
+        List<Integer> out = placed(correct, size);
+        return out != null ? out : nearPool(correct, 1);
+    }
+
+    /**
+     * Three wrong answers correct ± size[i]: a random number of them (0-3) below the right answer,
+     * among the placements that stay at 0 or above - "pick the middle / biggest / smallest" can't
+     * know where the right one is. null when no placement fits.
+     */
+    private List<Integer> placed(int correct, int[] size) {
+        List<Integer> ks = new ArrayList<>(List.of(0, 1, 2, 3));
+        Collections.shuffle(ks, random);
+        for (int k : ks) {
+            List<Integer> idx = new ArrayList<>(List.of(0, 1, 2));
+            for (int attempt = 0; attempt < 6; attempt++) {
+                Collections.shuffle(idx, random);
+                List<Integer> out = new ArrayList<>();
+                for (int i = 0; i < 3; i++) out.add(correct + (i < k ? -1 : 1) * size[idx.get(i)]);
+                if (out.stream().allMatch(x -> x >= 0 && x != correct) && new LinkedHashSet<>(out).size() == 3) return out;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * ×: the neighbouring row of the times table (7×8 instead of 7×9: ±a or ±b), a counting slip (±1/±2)
+     * and a carry slip (±10) - at different distances, so the right answer is not "the one in the
+     * middle" of evenly spread neighbours (the bot's 72% on grade ג).
+     */
+    private List<Integer> multiplicationPool(int a, int b) {
+        int c = a * b;
+        int row = random.nextBoolean() ? a : b;
+        int[] size = {row, rand(1, 2), row == 10 ? 20 : 10};
+        // Two two-digit numbers: "only the last digit" is a real shortcut - two of the mistakes keep it.
+        if (a >= 10 && b >= 10) size[1] = row % 10 == 0 ? 30 : 20;
+        if (size[0] == size[2] || size[0] == size[1]) size[0] = row + 1 == size[2] ? row + 2 : row + 1;
+        List<Integer> out = placed(c, size);
+        return out != null ? out : nearPool(c, 1);
+    }
+
+    /** ÷ and small answers: one, two or three away. */
+    private List<Integer> nearPool(int correct, int unit) {
+        List<Integer> pool = new ArrayList<>();
+        for (int j = 1; j <= 3; j++) {
+            pool.add(correct - unit * j);
+            pool.add(correct + unit * j);
+        }
+        return pool;
+    }
+
+    /** Sequences: a step too many / too few, or the step taken wrong by one. */
+    private List<Integer> sequencePool(int next, int step) {
+        return new ArrayList<>(List.of(next - step, next + step, next + 2 * step, next - 2 * step, next + 1, next - 1));
     }
 
     /** Three unique wrong answers near {@code correct}, never negative. */
