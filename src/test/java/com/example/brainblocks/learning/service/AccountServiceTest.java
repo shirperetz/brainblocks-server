@@ -29,6 +29,45 @@ class AccountServiceTest {
     }
 
     @Test
+    void aChildChangesTheirOwnPasswordOnlyWithTheCurrentOne() {
+        List<LearnerProfile> db = new ArrayList<>();
+        AccountService a = service(db);
+        var made = a.register("tal", "1234", "טל", "ROBOT", "G2", null);
+        a.approve(made.profile().getId());
+        String oldToken = a.login("tal", "1234", Instant.now()).token();
+        assertThatThrownBy(() -> a.changeOwnPassword(made.profile().getId(), "9999", "abcd"))
+                .hasMessageContaining("הנוכחית");
+        assertThatThrownBy(() -> a.changeOwnPassword(made.profile().getId(), "1234", "ab"))
+                .hasMessageContaining("לפחות");
+        var changed = a.changeOwnPassword(made.profile().getId(), "1234", "abcd");
+        assertThat(changed.token()).isNotNull().isNotEqualTo(oldToken);
+        assertThat(a.profileFor(oldToken)).isEmpty(); // other devices log in again
+        assertThat(a.login("tal", "abcd", Instant.now()).profile().getId()).isEqualTo(made.profile().getId());
+        assertThatThrownBy(() -> a.login("tal", "1234", Instant.now())).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void halfAnHourWithoutUseMeansLoggingInAgain() {
+        List<LearnerProfile> db = new ArrayList<>();
+        AccountService a = service(db);
+        var made = a.register("ido", "1234", "עידו", "ROBOT", "G2", null);
+        a.approve(made.profile().getId());
+        Instant t0 = Instant.parse("2026-11-11T10:00:00Z");
+        String token = a.login("ido", "1234", t0).token();
+        java.time.LocalDateTime l0 = java.time.LocalDateTime.ofInstant(t0, java.time.ZoneId.systemDefault());
+        // used every 20 minutes - stays in
+        assertThat(a.profileFor(token, l0.plusMinutes(20))).isPresent();
+        assertThat(a.profileFor(token, l0.plusMinutes(45))).isPresent();
+        // then 31 minutes of nothing - out, and the token is gone for good
+        assertThat(a.profileFor(token, l0.plusMinutes(77))).isEmpty();
+        assertThat(a.profileFor(token, l0.plusMinutes(78))).isEmpty();
+        // logging in again gives a NEW token
+        String again = a.login("ido", "1234", t0.plusSeconds(80 * 60)).token();
+        assertThat(again).isNotEqualTo(token);
+        assertThat(a.profileFor(again, l0.plusMinutes(81))).isPresent();
+    }
+
+    @Test
     void usernames() {
         assertThat(AccountService.USERNAME.matcher(AccountService.normalize(" Noa_7 ")).matches()).isTrue();
         assertThat(AccountService.USERNAME.matcher("נועה2").matches()).isTrue();

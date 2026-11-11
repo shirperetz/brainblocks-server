@@ -125,6 +125,25 @@ class TeachersAndReportsTest {
         assertThat(((Map<String, Object>) report.get("recommendation")).get("text").toString()).contains("חיבור עם המרה");
         assertThat(status("/api/learn/staff/children/" + noaId + "/report", HttpMethod.GET, rina, null)).isEqualTo(403);
 
+        // "האי שלי": a spot opens only when its level is passed; an item is an emoji, never text.
+        String island = "/api/learn/profiles/" + noaId + "/island";
+        assertThat(status(island, HttpMethod.PUT, noaToken, Map.of("spot", "ADDITION-3", "item", "🌳"))).isEqualTo(409);
+        List<Map<String, Object>> allRight = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            allRight.add(Map.of("questionText", "כמה זה 2 + " + i + "?", "chosenAnswer", "1", "correctAnswer", "1",
+                    "correct", true, "hintUsed", false, "topic", "ADDITION"));
+        }
+        assertThat(status("/api/learn/sessions", HttpMethod.POST, noaToken, Map.of("profileId", noaId, "topic", "ADDITION",
+                "stage", 1, "mode", "STAGE", "durationMs", 60000, "answers", allRight))).isEqualTo(200);
+        assertThat(status(island, HttpMethod.PUT, noaToken, Map.of("spot", "ADDITION-1", "item", "<b>hi</b>"))).isEqualTo(400);
+        assertThat(status(island, HttpMethod.PUT, noaToken, Map.of("spot", "ADDITION-1", "item", "🌳"))).isEqualTo(200);
+        Map<String, Object> mine = get(island, noaToken, Map.class);
+        assertThat(((Map<String, Object>) mine.get("choices")).get("ADDITION-1")).isEqualTo("🌳");
+        assertThat((List<Map<String, Object>>) mine.get("earned")).extracting(m -> m.get("spot")).contains("ADDITION-1");
+        assertThat(status("/api/learn/profiles/" + noaId + "/island", HttpMethod.GET, dana, null)).isEqualTo(404); // not hers via the child path
+        assertThat(status("/api/learn/staff/children/" + noaId + "/island", HttpMethod.GET, dana, null)).isEqualTo(200);
+        assertThat(status("/api/learn/staff/children/" + noaId + "/island", HttpMethod.GET, rina, null)).isEqualTo(403);
+
         // The class table: Noa, with addition marked.
         Map<String, Object> overview = get("/api/learn/staff/overview", dana, Map.class);
         List<Map<String, Object>> rows = (List<Map<String, Object>>) overview.get("children");

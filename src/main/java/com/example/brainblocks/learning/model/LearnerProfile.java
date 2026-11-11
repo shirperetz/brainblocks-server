@@ -165,4 +165,20 @@ public class LearnerProfile {
     public void setTeacher(boolean teacher) { this.role = teacher ? "TEACHER" : null; }
     public Long getClassId() { return classId; }
     public void setClassId(Long classId) { this.classId = classId; }
+
+    /**
+     * 2026-11-11 "האי שלי": what the child chose for each earned spot - JSON {"ADDITION-3":"🌳", ...}.
+     * Which spots are earned is NOT kept here: it is read from the stage progress, so it can't drift.
+     */
+    @Column(length = 4000)
+    private String islandJson;
+
+    /** 2026-11-11 (Shir: "after half an hour without using it - log in again"): last request with the token. */
+    private LocalDateTime tokenUsedAt;
+
+    public LocalDateTime getTokenUsedAt() { return tokenUsedAt; }
+    public void setTokenUsedAt(LocalDateTime tokenUsedAt) { this.tokenUsedAt = tokenUsedAt; }
+
+    public String getIslandJson() { return islandJson; }
+    public void setIslandJson(String islandJson) { this.islandJson = islandJson; }
 }

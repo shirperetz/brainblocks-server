@@ -55,12 +55,24 @@ public class HelpService {
         Tutor.Way way = Tutor.explain(q, attempt);
         if (way != null && attempt < 2) return new Help(way.text(), "tutor");
         java.util.Set<Long> allowed = way != null ? way.numbers() : new java.util.HashSet<>(Tutor.numbersIn(q));
+        // 2026-11-11: an explanation the model already wrote (and that passed every check) for this
+        // exercise + wrong answer + press + grade is read back - no model call.
+        String key = cacheKey(q, trim(chosen, 20), attempt, grade);
+        if (cache != null && !q.isBlank()) {
+            var hit = cache.findByCacheKey(key);
+            if (hit.isPresent() && HelpText.safe(hit.get().getText(), answer)) {
+                hit.get().used();
+                cache.save(hit.get());
+                return new Help(hit.get().getText(), "cache");
+            }
+        }
         if (enabled && !q.isBlank()) {
             for (int i = 0; i < 2; i++) {
                 String reply = HelpText.clean(ask(systemPrompt(grade, i > 0),
                         userPrompt(q, trim(chosen, 20), attempt > 0, way == null ? null : way.text())));
                 if (HelpText.safe(reply, answer) && HelpText.onlyNumbers(reply, allowed)
                         && (way == null || HelpText.keepsNumbers(reply, way.text()))) {
+                    remember(key, q, trim(chosen, 20), attempt, grade, reply);
                     return new Help(reply, "ai");
                 }
                 log.info("help: reply rejected (try {})", i + 1);
@@ -69,6 +81,39 @@ public class HelpService {
         if (way != null) return new Help(way.text(), "tutor");
         String hint = trim(fallback, 240);
         return new Help(hint.isBlank() ? "בואו נקרא את השאלה שוב לאט, ונחשוב צעד אחרי צעד." : hint, "hint");
+    }
+
+    // ---- the saved explanations (2026-11-11) ----
+
+    private com.example.brainblocks.learning.repository.HelpCacheRepository cache;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCache(com.example.brainblocks.learning.repository.HelpCacheRepository cache) {
+        this.cache = cache;
+    }
+
+    /** The 3rd, 4th... press each get their own saved explanation ("עוד דרך" stays a different way); 6+ share one. */
+    static String cacheKey(String question, String chosen, int attempt, String grade) {
+        String raw = question + "|" + (chosen == null ? "" : chosen) + "|" + Math.min(attempt, 6) + "|" + (grade == null ? "" : grade);
+        try {
+            byte[] h = java.security.MessageDigest.getInstance("SHA-256").digest(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(h);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private void remember(String key, String question, String chosen, int attempt, String grade, String text) {
+        if (cache == null) return;
+        try {
+            if (cache.findByCacheKey(key).isEmpty()) {
+                cache.save(new com.example.brainblocks.learning.model.HelpCacheEntry(key, question, chosen, Math.min(attempt, 6),
+                        grade == null ? null : trim(grade, 4), text));
+            }
+        } catch (RuntimeException e) {
+            // two children asking the same at the same moment - the other one saved it; fine
+            log.info("help: cache save skipped ({})", e.getClass().getSimpleName());
+        }
     }
 
     /** Kept for callers that only know "again". */

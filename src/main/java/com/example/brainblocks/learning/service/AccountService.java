@@ -147,6 +147,22 @@ public class AccountService {
         return ProfileResponse.fromEntity(p);
     }
 
+    /**
+     * 2026-11-11 (settings screen): the child changes their own password - only with the current one.
+     * This device gets a fresh token; every other device must log in again.
+     */
+    public Session changeOwnPassword(Long id, String current, String next) {
+        LearnerProfile p = profileService.findProfile(id);
+        if (current == null || !matches(current, p.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הסיסמה הנוכחית לא נכונה");
+        }
+        checkPassword(next);
+        p.setPasswordHash(hash(next));
+        p.setAuthToken(newToken());
+        repository.save(p);
+        return new Session(p.getAuthToken(), ProfileResponse.fromEntity(p));
+    }
+
     /** Block / unblock; blocking also ends every logged-in device. The admin can't block herself. */
     public ProfileResponse setDisabled(Long id, boolean disabled, Long adminId) {
         if (id.equals(adminId)) {
@@ -299,9 +315,13 @@ public class AccountService {
         if (!p.isApproved()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ההרשמה התקבלה ומחכה לאישור. אפשר להיכנס אחרי שיאשרו");
         }
-        if (p.getAuthToken() == null) {
+        // An old token that sat unused past the idle limit is replaced, never revived.
+        java.time.LocalDateTime nowLocal = java.time.LocalDateTime.ofInstant(now, java.time.ZoneId.systemDefault());
+        if (p.getAuthToken() == null || (idleMinutes > 0 && p.getTokenUsedAt() != null
+                && p.getTokenUsedAt().plusMinutes(idleMinutes).isBefore(nowLocal))) {
             p.setAuthToken(newToken());
         }
+        p.setTokenUsedAt(nowLocal);
         p.touch();
         repository.save(p);
         return new Session(p.getAuthToken(), ProfileResponse.fromEntity(p));
@@ -309,10 +329,39 @@ public class AccountService {
 
     /** The profile id a device token belongs to. */
     public Optional<Long> profileFor(String token) {
+        return profileFor(token, java.time.LocalDateTime.now());
+    }
+
+    /**
+     * 2026-11-11 (Shir: "if they don't use it for half an hour they log in again, so nobody breaks in"):
+     * a token unused for [idleMinutes] is cancelled - every device of that user logs in again. Use is
+     * written at most once a minute (not on every request).
+     */
+    Optional<Long> profileFor(String token, java.time.LocalDateTime now) {
         if (token == null || token.isBlank() || token.length() > 64) {
             return Optional.empty();
         }
-        return repository.findByAuthToken(token).filter(p -> !p.isDisabled() && p.isApproved()).map(LearnerProfile::getId);
+        Optional<LearnerProfile> found = repository.findByAuthToken(token).filter(p -> !p.isDisabled() && p.isApproved());
+        if (found.isEmpty()) return Optional.empty();
+        LearnerProfile p = found.get();
+        java.time.LocalDateTime used = p.getTokenUsedAt();
+        if (idleMinutes > 0 && used != null && used.plusMinutes(idleMinutes).isBefore(now)) {
+            p.setAuthToken(null);
+            repository.save(p);
+            return Optional.empty();
+        }
+        if (used == null || used.plusSeconds(60).isBefore(now)) {
+            p.setTokenUsedAt(now);
+            repository.save(p);
+        }
+        return Optional.of(p.getId());
+    }
+
+    private int idleMinutes = 30;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setIdleMinutes(@org.springframework.beans.factory.annotation.Value("${brainblocks.session-idle-minutes:30}") int minutes) {
+        this.idleMinutes = minutes;
     }
 
     static String normalize(String username) {

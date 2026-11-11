@@ -108,6 +108,14 @@ public class LearnController {
         return profileService.updateProfile(id, request);
     }
 
+    /** 2026-11-11 (settings): body { current, password } - a new token comes back for this device. */
+    @PostMapping("/profiles/{id}/password")
+    public AccountService.Session changePassword(@PathVariable Long id, @RequestBody Map<String, String> body,
+                                                 @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
+        return accountService.changeOwnPassword(id, body.get("current"), body.get("password"));
+    }
+
     /** Another child's profile looks like it doesn't exist. */
     private static void own(Long id, Long me) {
         if (id == null || !id.equals(me)) {
