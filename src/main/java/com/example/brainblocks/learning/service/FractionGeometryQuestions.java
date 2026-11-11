@@ -37,13 +37,15 @@ final class FractionGeometryQuestions {
      * 2026-11-11 ("שיהיה מלא ומכל הסוגים"): each level has its new kinds (about 60%) and goes back to
      * everything from the earlier levels (about 40%), so a level is practice, not ten of the same.
      */
+    // 2026-11-11 (Shir): no "which fraction is the biggest"; children should know how to WRITE a
+    // fraction and how much it is in wholes with a remainder - each its own level.
     private static final int[][] FRACTION_LEVELS = {
-            {1, 2},       // 1: איזה חלק צבוע, איזה שבר הכי גדול
-            {11, 12, 13}, // 2: השבר כמנת חילוק (2 : 3 = 2/3, 5/7 = 5 : 7, קטן/שווה/גדול מ-1) - 2026-11-11, מחוברת ה׳
-            {3, 7},       // 3: שברים שווים, השלמת שבר שווה (1/3 = ?/9)
-            {4, 5, 9},    // 4: חיבור/חיסור באותו מכנה, שבר מכמות, בעיה מילולית
-            {8},          // 5: צמצום (ו׳: גם מספרים עשרוניים)
-            {6},          // 6: ו׳ - מכנים שונים; ה׳ - הכול מעורב
+            {14, 1},      // 1: לכתוב שבר (שלוש חמישיות = 3/5, ולהפך), איזה חלק צבוע
+            {11, 12, 13}, // 2: השבר כמנת חילוק (2 : 3 = 2/3, 5/7 = 5 : 7, קטן/שווה/גדול מ-1) - מחוברת ה׳
+            {15, 16},     // 3: כמה שלמים (20/4 = 5), שלמים ושארית (17/5 = 3 שלמים ושארית 2)
+            {3, 7},       // 4: שברים שווים, השלמת שבר שווה (1/3 = ?/9)
+            {4, 5, 9},    // 5: חיבור/חיסור באותו מכנה, שבר מכמות, בעיה מילולית
+            {8},          // 6: צמצום (ו׳: גם עשרוניים ומכנים שונים)
     };
 
     QuestionResponse fraction(int id, Grade grade, int stage, boolean withPicture) {
@@ -51,16 +53,17 @@ final class FractionGeometryQuestions {
         int s = Math.min(Math.max(stage, 1), 6);
         List<Integer> current = new ArrayList<>();
         for (int k : FRACTION_LEVELS[s - 1]) current.add(k);
-        if (s == 5 && g6) current.add(10);
-        if (s == 6 && !g6) current.clear(); // grade 5: level 6 is everything mixed
+        if (s == 6 && g6) {
+            current.add(10); // עשרוניים
+            current.add(6);  // מכנים שונים
+        }
         List<Integer> earlier = new ArrayList<>();
         for (int i = 0; i < s - 1; i++) for (int k : FRACTION_LEVELS[i]) earlier.add(k);
-        if (g6 && s == 6) earlier.add(10);
         if (!withPicture) {
             current.remove(Integer.valueOf(1));
             earlier.remove(Integer.valueOf(1));
         }
-        int kind = pickKind(current, earlier, 2);
+        int kind = pickKind(current, earlier, 14);
         return switch (kind) {
             case 1 -> shaded(id);
             case 2 -> biggest(id, grade);
@@ -74,8 +77,78 @@ final class FractionGeometryQuestions {
             case 11 -> divisionAsFraction(id);
             case 12 -> fractionAsDivision(id);
             case 13 -> divisionVersusOne(id);
+            case 14 -> writeFraction(id);
+            case 15 -> wholes(id);
+            case 16 -> wholesAndRemainder(id);
             default -> differentDenominators(id);
         };
+    }
+
+    // ---- לכתוב שבר, שלמים ושארית (2026-11-11, Shir) ----
+
+    private static final String[] PART = {"", "", "חצי", "שליש", "רבע", "חמישית", "שישית", "שביעית", "שמינית", "תשיעית", "עשירית"};
+    private static final String[] PARTS = {"", "", "", "שלישים", "רבעים", "חמישיות", "שישיות", "שביעיות", "שמיניות", "תשיעיות", "עשיריות"};
+    private static final String[] COUNT_M = {"", "", "שני", "שלושה", "ארבעה", "חמישה", "שישה", "שבעה", "שמונה", "תשעה"};
+    private static final String[] COUNT_F = {"", "", "שתי", "שלוש", "ארבע", "חמש", "שש", "שבע", "שמונה", "תשע"};
+
+    /** "שלוש חמישיות" - the way the fraction is said in Hebrew (proper fractions, denominators 2-10). */
+    static String fractionWords(int n, int d) {
+        if (n == 1) return PART[d];
+        boolean masculine = d == 3 || d == 4; // שלישים, רבעים
+        return (masculine ? COUNT_M[n] : COUNT_F[n]) + " " + PARTS[d];
+    }
+
+    /** "איך כותבים שלוש חמישיות?" -> 3/5, or the other way: "איך קוראים לשבר 3/5?" -> שלוש חמישיות. */
+    private QuestionResponse writeFraction(int id) {
+        int d = rand(3, 10);
+        int n = rand(1, d - 1);
+        if (random.nextBoolean()) {
+            List<String> wrong = new ArrayList<>(List.of(frac(d, n), frac(n, d + 1), frac(n + 1 < d ? n + 1 : n - 1 == 0 ? n + 2 : n - 1, d)));
+            return text(id, Topic.FRACTIONS, "איך כותבים " + fractionWords(n, d) + "?", frac(n, d), wrong,
+                    "המילה שבסוף (חמישיות, רבעים...) אומרת לכמה חלקים חילקו - זה המספר שלמטה. המספר שבהתחלה - כמה חלקים לקחו - למעלה.",
+                    fractionWords(n, d) + " = " + n + " חלקים מתוך " + d + " = " + frac(n, d) + ".", null);
+        }
+        List<String> wrong = new ArrayList<>();
+        int d2 = d == 10 ? 9 : d + 1;
+        wrong.add(fractionWords(n, d2));
+        if (n + 1 < d) wrong.add(fractionWords(n + 1, d));
+        if (n > 1) wrong.add(fractionWords(n - 1, d));
+        wrong.add(fractionWords(Math.max(1, Math.min(n, d - 2)), d - 1 >= 3 ? d - 1 : d + 2));
+        return text(id, Topic.FRACTIONS, "איך קוראים לשבר " + frac(n, d) + "?", fractionWords(n, d), wrong,
+                "המספר שלמטה אומר לכמה חלקים חילקו (5 - חמישיות), והמספר שלמעלה כמה חלקים לקחו.",
+                frac(n, d) + ": " + n + " חלקים מתוך " + d + " - " + fractionWords(n, d) + ".", null);
+    }
+
+    /** "כמה שלמים הם 20/4?" - a fraction that is a whole number. */
+    private QuestionResponse wholes(int id) {
+        int d = rand(2, 10);
+        int w = rand(2, 9);
+        return text(id, Topic.FRACTIONS, "כמה שלמים הם " + frac(d * w, d) + "?", String.valueOf(w),
+                List.of(String.valueOf(d * w - d), String.valueOf(w + 1), String.valueOf(d)),
+                "השבר הוא חילוק: מחלקים את המספר שלמעלה במספר שלמטה. כל " + d + " חלקים הם שלם אחד.",
+                d * w + " : " + d + " = " + w + ", ולכן " + frac(d * w, d) + " = " + w + " שלמים.", null);
+    }
+
+    /** "כמה שלמים יש ב-17/5, וכמה נשאר?" -> 3 שלמים ושארית 2 (written also as 3 ו-2/5). */
+    private QuestionResponse wholesAndRemainder(int id) {
+        int d = rand(2, 10);
+        int w = rand(1, 6);
+        int r = rand(1, d - 1);
+        int n = w * d + r;
+        String correct = answerWR(w, r);
+        List<String> wrong = new ArrayList<>();
+        wrong.add(answerWR(w + 1, r));                                  // one whole too many
+        wrong.add(r + 1 < d ? answerWR(w, r + 1) : answerWR(w, r - 1)); // remainder off by one
+        if (w > 1) wrong.add(answerWR(w - 1, r + d));                   // a "remainder" bigger than the bottom
+        wrong.add(answerWR(r, w));
+        wrong.add(answerWR(w + 2, r));                                  // spare, if two of the above collide
+        return text(id, Topic.FRACTIONS, "כמה שלמים יש ב-" + frac(n, d) + ", וכמה נשאר?", correct, wrong,
+                "כל " + d + " חלקים הם שלם אחד. בודקים כמה פעמים " + d + " נכנס ב-" + n + ", ומה שנשאר הוא השארית (תמיד קטנה מ-" + d + ").",
+                n + " : " + d + " = " + w + " ושארית " + r + ", כלומר " + w + " שלמים ו-" + frac(r, d) + ".", null);
+    }
+
+    private static String answerWR(int wholes, int remainder) {
+        return (wholes == 1 ? "שלם אחד" : wholes + " שלמים") + " ושארית " + remainder;
     }
 
     // ---- השבר כמנת חילוק (2026-11-11, from her grade-5 workbook, "נושא 5") ----

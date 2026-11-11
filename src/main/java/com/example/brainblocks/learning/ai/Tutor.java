@@ -50,6 +50,17 @@ public final class Tutor {
     /** Ways for שברים / גיאומטריה (FractionGeometryQuestions) - the method, never the answer. */
     static Way fractionOrGeometry(String q, int v) {
         // 2026-11-11: השבר כמנת חילוק and the three geometry tracks - checked first.
+        if ((q.startsWith("איך כותבים") && !q.contains("עשרוני")) || q.startsWith("איך קוראים לשבר")) {
+            return way(q, v == 0
+                    // 2026-11-11: the example is halves - never asked, so the help can't give the answer away.
+                    ? "השם של השבר בא מהמספר שלמטה - לכמה חלקים חילקו (2 - חצאים). המספר שלמעלה אומר כמה חלקים כאלה לקחו."
+                    : "חצי = חלק אחד מתוך 2: למעלה 1, למטה 2. באותו אופן: כמה חלקים לקחו - למעלה, לכמה חילקו - למטה.");
+        }
+        if (q.startsWith("כמה שלמים")) {
+            return way(q, v == 0
+                    ? "שבר הוא חילוק: מחלקים את המספר שלמעלה במספר שלמטה. כל פעם שהמספר שלמטה נכנס - זה שלם אחד. מה שלא נכנס - שארית."
+                    : "תחשבו על פיצות: כל פיצה מחולקת לחלקים כמו המספר שלמטה. כמה פיצות שלמות אפשר להרכיב מכל החלקים, וכמה חלקים נשארים?");
+        }
         if (q.startsWith("כתבו את התרגיל") && q.contains("כשבר")) {
             return way(q, v == 0
                     ? "קו השבר הוא סימן החילוק. המספר הראשון (זה שמחלקים) נכתב למעלה, והשני (זה שמחלקים בו) למטה."

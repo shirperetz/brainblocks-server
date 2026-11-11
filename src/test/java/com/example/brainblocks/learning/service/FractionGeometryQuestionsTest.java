@@ -29,7 +29,10 @@ class FractionGeometryQuestionsTest {
                 for (int stage = 1; stage <= 6; stage++) {
                     QuestionResponse q = gen.fraction(0, g, stage, true);
                     // 2026-11-11: "השבר כמנת חילוק" kinds are solved in GeometryTracksAndDivisionTest.
-                    if (q.getText().startsWith("כתבו את") || q.getText().startsWith("התוצאה של")) continue;
+                    if (q.getText().startsWith("כתבו את") || q.getText().startsWith("התוצאה של")
+                            || (q.getText().startsWith("איך כותבים") && !q.getText().contains("עשרוני"))
+                            || q.getText().startsWith("איך קוראים לשבר")
+                            || q.getText().startsWith("כמה שלמים")) continue;
                     checkShape(q);
                     String correct = q.getOptions().get(q.getCorrectIndex());
                     String t = q.getText();

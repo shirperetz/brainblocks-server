@@ -120,4 +120,69 @@ class GeometryTracksAndDivisionTest {
         }
         assertThat(seen).as("the new kinds are most of level 2").isGreaterThan(1500);
     }
+
+    /** 2026-11-11 (Shir): writing fractions and wholes-with-remainder, each its own level; no "biggest". */
+    @Test
+    void writingFractionsAndWholesWithRemainder() {
+        Pattern frac = Pattern.compile("(\\d+)/(\\d+)");
+        int write = 0, wholes = 0;
+        for (long seed = 0; seed < 1500; seed++) {
+            FractionGeometryQuestions gen = new FractionGeometryQuestions(new Random(seed));
+            for (Grade g : List.of(Grade.G5, Grade.G6)) {
+                for (int stage = 1; stage <= 6; stage++) {
+                    QuestionResponse q = gen.fraction(0, g, stage, true);
+                    String t = q.getText();
+                    assertThat(t).as("no 'which is biggest' any more").doesNotContain("הכי גדול");
+                    String correct = q.getOptions().get(q.getCorrectIndex());
+                    if (t.contains("עשרוני")) continue; // decimals (grade 6) - FractionGeometryQuestionsTest
+                    if (t.startsWith("איך כותבים") || t.startsWith("איך קוראים לשבר") || t.startsWith("כמה שלמים")) {
+                        assertThat(q.getOptions()).as(t).hasSize(4);
+                        assertThat(new HashSet<>(q.getOptions())).as(t + " " + q.getOptions()).hasSize(4);
+                        assertThat(Tutor.explain(t, 0)).as("help " + t).isNotNull();
+                        assertThat(Tutor.explain(t, 0).text()).as("help never tells " + t).doesNotContain(correct);
+                    }
+                    if (t.startsWith("איך כותבים")) {
+                        Matcher m = frac.matcher(correct);
+                        assertThat(m.matches()).as(t).isTrue();
+                        int n = Integer.parseInt(m.group(1)), d = Integer.parseInt(m.group(2));
+                        assertThat(t).as(t).contains(FractionGeometryQuestions.fractionWords(n, d) + "?");
+                        write++;
+                    } else if (t.startsWith("איך קוראים לשבר")) {
+                        Matcher m = frac.matcher(t);
+                        m.find();
+                        assertThat(correct).as(t).isEqualTo(FractionGeometryQuestions.fractionWords(
+                                Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2))));
+                        write++;
+                    } else if (t.startsWith("כמה שלמים הם")) {
+                        Matcher m = frac.matcher(t);
+                        m.find();
+                        int n = Integer.parseInt(m.group(1)), d = Integer.parseInt(m.group(2));
+                        assertThat(n % d).isZero();
+                        assertThat(Integer.parseInt(correct)).as(t).isEqualTo(n / d);
+                        wholes++;
+                    } else if (t.startsWith("כמה שלמים יש ב")) {
+                        Matcher m = frac.matcher(t);
+                        m.find();
+                        int n = Integer.parseInt(m.group(1)), d = Integer.parseInt(m.group(2));
+                        int w = correct.startsWith("שלם אחד") ? 1 : Integer.parseInt(correct.split(" ")[0]);
+                        int r = Integer.parseInt(correct.replaceAll(".*ושארית ", ""));
+                        assertThat(w * d + r).as(t + " -> " + correct).isEqualTo(n);
+                        assertThat(r).as(t).isBetween(1, d - 1);
+                        wholes++;
+                    }
+                }
+            }
+        }
+        assertThat(write).isGreaterThan(1000);
+        assertThat(wholes).isGreaterThan(1000);
+    }
+
+    @Test
+    void fractionWordsAreHebrew() {
+        assertThat(FractionGeometryQuestions.fractionWords(3, 5)).isEqualTo("שלוש חמישיות");
+        assertThat(FractionGeometryQuestions.fractionWords(2, 3)).isEqualTo("שני שלישים");
+        assertThat(FractionGeometryQuestions.fractionWords(3, 4)).isEqualTo("שלושה רבעים");
+        assertThat(FractionGeometryQuestions.fractionWords(1, 8)).isEqualTo("שמינית");
+        assertThat(FractionGeometryQuestions.fractionWords(7, 10)).isEqualTo("שבע עשיריות");
+    }
 }
