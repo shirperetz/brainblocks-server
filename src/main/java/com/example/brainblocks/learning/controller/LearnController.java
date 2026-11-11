@@ -108,6 +108,16 @@ public class LearnController {
         return profileService.updateProfile(id, request);
     }
 
+    /**
+     * 2026-11-11: "still here" - the app sends it (at most once a minute) while the child taps, so a
+     * level played without any other request doesn't count as "not used" for the 30-minute log-out.
+     * The token check itself (LearnerAuthConfig) records the use; nothing else happens.
+     */
+    @GetMapping("/ping")
+    public org.springframework.http.ResponseEntity<Void> ping() {
+        return org.springframework.http.ResponseEntity.noContent().build();
+    }
+
     /** 2026-11-11 (settings): body { current, password } - a new token comes back for this device. */
     @PostMapping("/profiles/{id}/password")
     public AccountService.Session changePassword(@PathVariable Long id, @RequestBody Map<String, String> body,
