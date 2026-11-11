@@ -1,6 +1,5 @@
 package com.example.brainblocks.learning.controller;
 
-import com.example.brainblocks.learning.dto.request.CreateProfileRequest;
 import com.example.brainblocks.learning.dto.request.SubmitSessionRequest;
 import com.example.brainblocks.learning.dto.request.UpdateProfileRequest;
 import com.example.brainblocks.learning.dto.response.MapResponse;
@@ -30,6 +29,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import com.example.brainblocks.config.LearnerAuthConfig;
+import com.example.brainblocks.learning.service.AccountService;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +56,7 @@ public class LearnController {
     private final SpeechService speechService;
     private final LearnerMistakeRepository mistakeRepository;
     private final LearnerSessionRepository sessionRepository;
+    private final AccountService accountService;
 
     public LearnController(LearnerProfileService profileService,
                            LearningQuestionService questionService,
@@ -61,7 +64,9 @@ public class LearnController {
                            HelpService helpService,
                            SpeechService speechService,
                            LearnerMistakeRepository mistakeRepository,
-                           LearnerSessionRepository sessionRepository) {
+                           LearnerSessionRepository sessionRepository,
+                          AccountService accountService) {
+        this.accountService = accountService;
         this.profileService = profileService;
         this.questionService = questionService;
         this.progressService = progressService;
@@ -73,21 +78,41 @@ public class LearnController {
 
     // ---- Profiles ----------------------------------------------------------
 
-    @PostMapping("/profiles")
+    // 2026-11-11: children's accounts - a profile is created only with a username + password
+    // (POST /auth/register); every other call carries the device token (LearnerAuthConfig) and may
+    // touch only that child's own profile (own()).
+
+    @PostMapping("/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public ProfileResponse createProfile(@RequestBody CreateProfileRequest request) {
-        return profileService.createProfile(request);
+    public AccountService.Session register(@RequestBody Map<String, String> body) {
+        return accountService.register(body.get("username"), body.get("password"), body.get("name"),
+                body.get("avatar"), body.get("grade"), body.get("difficulty"));
+    }
+
+    @PostMapping("/auth/login")
+    public AccountService.Session login(@RequestBody Map<String, String> body) {
+        return accountService.login(body.get("username"), body.get("password"), java.time.Instant.now());
     }
 
     @GetMapping("/profiles/{id}")
-    public ProfileResponse getProfile(@PathVariable Long id) {
+    public ProfileResponse getProfile(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
         return profileService.getProfile(id);
     }
 
     @PatchMapping("/profiles/{id}")
     public ProfileResponse updateProfile(@PathVariable Long id,
-                                         @RequestBody UpdateProfileRequest request) {
+                                         @RequestBody UpdateProfileRequest request,
+                                         @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
         return profileService.updateProfile(id, request);
+    }
+
+    /** Another child's profile looks like it doesn't exist. */
+    private static void own(Long id, Long me) {
+        if (id == null || !id.equals(me)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found");
+        }
     }
 
     // ---- Gameplay ----------------------------------------------------------
@@ -97,7 +122,9 @@ public class LearnController {
     public List<QuestionResponse> getQuestions(@RequestParam Long profileId,
                                                @RequestParam String topic,
                                                @RequestParam(defaultValue = "1") int stage,
-                                               @RequestParam(defaultValue = "10") int count) {
+                                               @RequestParam(defaultValue = "10") int count,
+                                               @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(profileId, me);
         LearnerProfile profile = profileService.findProfile(profileId);
         int clamped = Math.min(Math.max(count, 1), 20);
         return questionService.generate(parseTopic(topic), profile.getGrade(),
@@ -105,12 +132,16 @@ public class LearnController {
     }
 
     @GetMapping("/profiles/{id}/map")
-    public MapResponse getMap(@PathVariable Long id, @RequestParam String topic) {
+    public MapResponse getMap(@PathVariable Long id, @RequestParam String topic,
+                              @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
         return progressService.getMap(id, parseTopic(topic));
     }
 
     @PostMapping("/sessions")
-    public SessionSummaryResponse submitSession(@RequestBody SubmitSessionRequest request) {
+    public SessionSummaryResponse submitSession(@RequestBody SubmitSessionRequest request,
+                                                @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(request.getProfileId(), me);
         return progressService.submitSession(request);
     }
 
@@ -136,7 +167,8 @@ public class LearnController {
 
     /** Mistakes not fixed yet, newest first (at most 20). */
     @GetMapping("/profiles/{id}/mistakes")
-    public List<MistakeDto> mistakes(@PathVariable Long id) {
+    public List<MistakeDto> mistakes(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
         profileService.findProfile(id);
         return mistakeRepository.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(id).stream()
                 .limit(20).map(MistakeDto::fromEntity).toList();
@@ -144,7 +176,9 @@ public class LearnController {
 
     /** The child answered a past mistake correctly - it leaves the review list. */
     @PostMapping("/mistakes/{id}/resolve")
-    public Map<String, Boolean> resolveMistake(@PathVariable Long id, @RequestParam Long profileId) {
+    public Map<String, Boolean> resolveMistake(@PathVariable Long id, @RequestParam Long profileId,
+                                               @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(profileId, me);
         LearnerMistake m = mistakeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "mistake not found"));
         if (!m.getProfileId().equals(profileId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "mistake not found");
@@ -155,7 +189,8 @@ public class LearnController {
 
     /** For the home screen: daily streak, whether today's challenge is done, best 60-second score, open mistakes. */
     @GetMapping("/profiles/{id}/stats")
-    public Map<String, Object> stats(@PathVariable Long id) {
+    public Map<String, Object> stats(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
         LearnerProfile p = profileService.findProfile(id);
         List<LearnerSession> sessions = sessionRepository.findByProfileId(id);
         int bestTimed = sessions.stream().filter(s -> s.getMode() == SessionMode.TIMED)

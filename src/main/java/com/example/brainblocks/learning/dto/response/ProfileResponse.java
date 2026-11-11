@@ -39,8 +39,18 @@ public class ProfileResponse {
         return new ProfileResponse(
                 p.getId(), p.getName(), p.getAvatar(), p.getGrade(), p.getDifficulty(),
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
-        );
+        ).withUsername(p.getUsername());
     }
+
+    /** 2026-11-11: shown on the home screen ("מחובר/ת בתור ...") - never the password or token. */
+    private String username;
+
+    private ProfileResponse withUsername(String username) {
+        this.username = username;
+        return this;
+    }
+
+    public String getUsername() { return username; }
 
     public Long getId() { return id; }
     public String getName() { return name; }

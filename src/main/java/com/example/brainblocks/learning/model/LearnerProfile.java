@@ -59,6 +59,20 @@ public class LearnerProfile {
     @Column(nullable = false)
     private LocalDateTime lastActiveAt;
 
+    // 2026-11-11 (Shir: "a username and password for every child, and it remembers each one").
+    // Profiles made before that have none - they stay in the DB, they just can't be logged into.
+    /** Lower-case, unique; what the child types to log in. */
+    @Column(unique = true, length = 20)
+    private String username;
+
+    /** PBKDF2 hash with its salt ("pbkdf2$iterations$salt$hash") - never the password itself. */
+    @Column(length = 160)
+    private String passwordHash;
+
+    /** Random token the device keeps after login; sent with every request. */
+    @Column(unique = true, length = 64)
+    private String authToken;
+
     protected LearnerProfile() {}
 
     public LearnerProfile(String name, Avatar avatar) {
@@ -114,4 +128,10 @@ public class LearnerProfile {
     public void setSoundEnabled(boolean soundEnabled) { this.soundEnabled = soundEnabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getLastActiveAt() { return lastActiveAt; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public String getAuthToken() { return authToken; }
+    public void setAuthToken(String authToken) { this.authToken = authToken; }
 }
