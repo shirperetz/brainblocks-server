@@ -119,4 +119,31 @@ class AccountServiceTest {
     private static Optional<Avatar> unused() {
         return Optional.empty();
     }
+
+    @Test
+    void adminResetsPasswordsBlocksAndChangesTheCode() {
+        List<LearnerProfile> db = new ArrayList<>();
+        AccountService a = service(db);
+        var kid = a.register("noa", "1234", "נועה", "ROBOT", null, null);
+        Long id = kid.profile().getId();
+        // a forgotten password: new one works, the old one and old devices don't
+        a.setCredentials(id, null, "5678");
+        assertThatThrownBy(() -> a.login("noa", "1234", Instant.now())).hasMessageContaining("לא נכונים");
+        assertThat(a.profileFor(kid.token())).isEmpty();
+        var again = a.login("noa", "5678", Instant.now());
+        // blocked: no log-in, device token stops; unblocked: works again
+        a.setDisabled(id, true, 999L);
+        assertThat(a.profileFor(again.token())).isEmpty();
+        assertThatThrownBy(() -> a.login("noa", "5678", Instant.now())).hasMessageContaining("חסום");
+        a.setDisabled(id, false, 999L);
+        assertThat(a.login("noa", "5678", Instant.now()).token()).isNotBlank();
+        assertThatThrownBy(() -> a.setDisabled(999L, true, 999L)).hasMessageContaining("את עצמך");
+        // join code
+        assertThat(a.changeJoinCode(" 7777 ")).isEqualTo("7777");
+        assertThat(a.register("7777", "dan", "1234", "דן", "ROBOT", null, null).token()).isNotBlank();
+        assertThatThrownBy(() -> a.changeJoinCode("1 2")).hasMessageContaining("4 עד 20");
+        assertThat(a.changeJoinCode("")).isEmpty(); // sign-up closed
+        assertThatThrownBy(() -> a.register("", "eli", "1234", "אלי", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
+        assertThat(a.isAdmin(id)).isFalse(); // only the database makes an admin
+    }
 }

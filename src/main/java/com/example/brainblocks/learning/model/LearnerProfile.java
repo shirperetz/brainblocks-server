@@ -73,6 +73,13 @@ public class LearnerProfile {
     @Column(unique = true, length = 64)
     private String authToken;
 
+    // 2026-11-11: Shir's admin account (sees every child, resets passwords, blocks, join code).
+    // Set only in the database, never by a request. Nullable: old rows read as "no".
+    private Boolean admin;
+
+    /** Blocked by the admin: can't log in, the device token stops working. Reversible. */
+    private Boolean disabled;
+
     protected LearnerProfile() {}
 
     public LearnerProfile(String name, Avatar avatar) {
@@ -134,4 +141,7 @@ public class LearnerProfile {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getAuthToken() { return authToken; }
     public void setAuthToken(String authToken) { this.authToken = authToken; }
+    public boolean isAdmin() { return Boolean.TRUE.equals(admin); }
+    public boolean isDisabled() { return Boolean.TRUE.equals(disabled); }
+    public void setDisabled(boolean disabled) { this.disabled = disabled; }
 }

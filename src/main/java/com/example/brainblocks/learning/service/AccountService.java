@@ -57,24 +57,98 @@ public class AccountService {
      * the link see only the log-in. Kept in local.properties (brainblocks.join-code), not in git.
      * Blank = sign-up closed.
      */
-    private final String joinCode;
+    private volatile String joinCode;
+    /** Where the admin's change of the code is kept (2026-11-11); absent in unit tests. */
+    private final com.example.brainblocks.learning.repository.AppSettingRepository settings;
+    static final String JOIN_CODE_KEY = "join_code";
 
     public AccountService(LearnerProfileRepository repository, LearnerProfileService profileService) {
         this(repository, profileService, "");
     }
 
+    public AccountService(LearnerProfileRepository repository, LearnerProfileService profileService, String joinCode) {
+        this(repository, profileService, joinCode, null);
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public AccountService(LearnerProfileRepository repository, LearnerProfileService profileService,
-                          @org.springframework.beans.factory.annotation.Value("${brainblocks.join-code:}") String joinCode) {
+                          @org.springframework.beans.factory.annotation.Value("${brainblocks.join-code:}") String joinCode,
+                          com.example.brainblocks.learning.repository.AppSettingRepository settings) {
         this.repository = repository;
         this.profileService = profileService;
-        this.joinCode = joinCode == null ? "" : joinCode.trim();
+        this.settings = settings;
+        // The admin's code (in the DB) wins over the one in local.properties.
+        String saved = settings == null ? null
+                : settings.findById(JOIN_CODE_KEY).map(com.example.brainblocks.learning.model.AppSetting::getValue).orElse(null);
+        this.joinCode = saved != null ? saved : joinCode == null ? "" : joinCode.trim();
+    }
+
+    // ---- admin (2026-11-11) ----
+
+    public String joinCode() {
+        return joinCode;
+    }
+
+    /** 4-20 letters/digits; blank closes sign-up. */
+    public String changeJoinCode(String code) {
+        String c = code == null ? "" : code.trim();
+        if (!c.isEmpty() && !c.matches("[\\p{IsHebrew}A-Za-z0-9]{4,20}")) {
+            throw bad("קוד הצטרפות: 4 עד 20 אותיות או ספרות (ריק = סגור להרשמה)");
+        }
+        if (settings != null) {
+            settings.save(new com.example.brainblocks.learning.model.AppSetting(JOIN_CODE_KEY, c));
+        }
+        joinCode = c;
+        return c;
+    }
+
+    /** New password (and a username for an old profile that has none); every device must log in again. */
+    public ProfileResponse setCredentials(Long id, String username, String password) {
+        LearnerProfile p = profileService.findProfile(id);
+        if (username != null && !username.isBlank()) {
+            String user = normalize(username);
+            if (!USERNAME.matcher(user).matches()) {
+                throw bad("שם המשתמש צריך להיות 3 עד 20 אותיות או ספרות, בלי רווחים");
+            }
+            if (!user.equals(p.getUsername()) && repository.existsByUsername(user)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "שם המשתמש הזה כבר תפוס - נסו שם אחר");
+            }
+            p.setUsername(user);
+        }
+        if (p.getUsername() == null) {
+            throw bad("לפרופיל הזה אין שם משתמש - צריך לבחור אחד");
+        }
+        checkPassword(password);
+        p.setPasswordHash(hash(password));
+        p.setAuthToken(newToken());
+        failures.remove(p.getUsername());
+        repository.save(p);
+        return ProfileResponse.fromEntity(p);
+    }
+
+    /** Block / unblock; blocking also ends every logged-in device. The admin can't block herself. */
+    public ProfileResponse setDisabled(Long id, boolean disabled, Long adminId) {
+        if (id.equals(adminId)) {
+            throw bad("אי אפשר לחסום את עצמך");
+        }
+        LearnerProfile p = profileService.findProfile(id);
+        p.setDisabled(disabled);
+        if (disabled) {
+            p.setAuthToken(null);
+        }
+        repository.save(p);
+        return ProfileResponse.fromEntity(p);
+    }
+
+    public boolean isAdmin(Long id) {
+        return id != null && repository.findById(id).map(LearnerProfile::isAdmin).orElse(false);
     }
 
     public Session register(String joinCode, String username, String password, String name, String avatar,
                             String grade, String difficulty) {
-        if (this.joinCode.isEmpty() || joinCode == null
-                || !MessageDigest.isEqual(this.joinCode.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+        String expected = this.joinCode;
+        if (expected.isEmpty() || joinCode == null
+                || !MessageDigest.isEqual(expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
                         joinCode.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "קוד ההצטרפות לא נכון. בקשו אותו מההורים או מהמורה");
         }
@@ -122,6 +196,9 @@ public class AccountService {
         }
         failures.remove(user);
         LearnerProfile p = found.get();
+        if (p.isDisabled()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "המשתמש הזה חסום. פנו להורים או למורה");
+        }
         if (p.getAuthToken() == null) {
             p.setAuthToken(newToken());
         }
@@ -135,7 +212,7 @@ public class AccountService {
         if (token == null || token.isBlank() || token.length() > 64) {
             return Optional.empty();
         }
-        return repository.findByAuthToken(token).map(LearnerProfile::getId);
+        return repository.findByAuthToken(token).filter(p -> !p.isDisabled()).map(LearnerProfile::getId);
     }
 
     static String normalize(String username) {
