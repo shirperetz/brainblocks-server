@@ -11,9 +11,8 @@ public class CorsConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOrigins(
-                        "http://localhost:5173", "http://127.0.0.1:5173",
-                        "http://localhost:5174", "http://127.0.0.1:5174",
-                        "http://localhost:3000", "http://127.0.0.1:3000"
+                        // עולם החשבון (learn-client) only - the Math Race client was removed 2026-11-11.
+                        "http://localhost:5174", "http://127.0.0.1:5174"
                 )
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
