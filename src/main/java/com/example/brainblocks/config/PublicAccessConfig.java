@@ -36,9 +36,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PublicAccessConfig implements WebMvcConfigurer {
 
     private final String clientDist;
+    /** On the public host (profile "cloud") every request comes through its proxy: trust X-Forwarded-For. */
+    private final boolean trustForwarded;
 
-    public PublicAccessConfig(@Value("${brainblocks.client-dist:../learn-client/dist/}") String clientDist) {
+    public PublicAccessConfig(@Value("${brainblocks.client-dist:../learn-client/dist/}") String clientDist,
+                              @Value("${brainblocks.trust-forwarded:false}") boolean trustForwarded) {
         this.clientDist = clientDist.endsWith("/") ? clientDist : clientDist + "/";
+        this.trustForwarded = trustForwarded;
     }
 
     @Override
@@ -106,10 +110,14 @@ public class PublicAccessConfig implements WebMvcConfigurer {
 
     /** The visitor's address: Funnel's X-Forwarded-For only when the request came over loopback. */
     static String visitor(HttpServletRequest r) {
+        return visitor(r, false);
+    }
+
+    static String visitor(HttpServletRequest r, boolean trustForwarded) {
         String remote = r.getRemoteAddr();
         boolean loopback = "127.0.0.1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote) || "::1".equals(remote);
         String fwd = r.getHeader("X-Forwarded-For");
-        if (loopback && fwd != null && !fwd.isBlank()) {
+        if ((loopback || trustForwarded) && fwd != null && !fwd.isBlank()) {
             return fwd.split(",")[0].trim();
         }
         return remote;
@@ -138,7 +146,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                         }
                     }
                     boolean post = "POST".equals(req.getMethod());
-                    String who = visitor(req);
+                    String who = visitor(req, trustForwarded);
                     if (post && path.equals("/api/learn/auth/register")) {
                         // who tried to sign up, and from where (Shir: "nobody gets in without me knowing")
                         org.slf4j.LoggerFactory.getLogger("brainblocks.signup").info("sign-up attempt from {}", who);

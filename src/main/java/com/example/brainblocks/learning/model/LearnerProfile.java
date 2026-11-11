@@ -148,6 +148,7 @@ public class LearnerProfile {
     public String getAuthToken() { return authToken; }
     public void setAuthToken(String authToken) { this.authToken = authToken; }
     public boolean isAdmin() { return Boolean.TRUE.equals(admin); }
+    public void setAdmin(boolean admin) { this.admin = admin; }
     public boolean isDisabled() { return Boolean.TRUE.equals(disabled); }
     public void setDisabled(boolean disabled) { this.disabled = disabled; }
     public boolean isApproved() { return !Boolean.FALSE.equals(approved); }

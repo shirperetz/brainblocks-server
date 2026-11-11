@@ -70,6 +70,27 @@ public class AccountService {
         this(repository, profileService, joinCode, null);
     }
 
+    /**
+     * Usernames that are admins (2026-11-11, the public site): set on the host (ADMIN_USERNAMES), never
+     * from a request - the site's own database starts empty, so its admin can't be set by hand there.
+     */
+    private java.util.Set<String> adminUsernames = java.util.Set.of();
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAdminUsernames(@org.springframework.beans.factory.annotation.Value("${brainblocks.admin-usernames:}") String names) {
+        java.util.Set<String> s = new java.util.HashSet<>();
+        for (String n : names.split(",")) if (!n.isBlank()) s.add(normalize(n));
+        adminUsernames = java.util.Set.copyOf(s);
+    }
+
+    /** A configured admin username: admin, approved, never blocked by the approval step. */
+    private void applyAdmin(LearnerProfile p) {
+        if (p.getUsername() != null && adminUsernames.contains(p.getUsername()) && !p.isAdmin()) {
+            p.setAdmin(true);
+            p.setApproved(true);
+        }
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public AccountService(LearnerProfileRepository repository, LearnerProfileService profileService,
                           @org.springframework.beans.factory.annotation.Value("${brainblocks.join-code:}") String joinCode,
@@ -187,8 +208,10 @@ public class AccountService {
         p.setPasswordHash(hash(password));
         // Waits for the admin: no token until she approves (the child logs in after that).
         p.setApproved(false);
+        applyAdmin(p);
+        if (p.isAdmin()) p.setAuthToken(newToken());
         repository.save(p);
-        return new Session(null, ProfileResponse.fromEntity(p));
+        return new Session(p.getAuthToken(), ProfileResponse.fromEntity(p));
     }
 
     public Session login(String username, String password, Instant now) {
@@ -205,6 +228,7 @@ public class AccountService {
         }
         failures.remove(user);
         LearnerProfile p = found.get();
+        applyAdmin(p);
         if (p.isDisabled()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "המשתמש הזה חסום. פנו להורים או למורה");
         }
