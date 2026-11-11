@@ -28,6 +28,8 @@ class FractionGeometryQuestionsTest {
             for (Grade g : List.of(Grade.G5, Grade.G6)) {
                 for (int stage = 1; stage <= 6; stage++) {
                     QuestionResponse q = gen.fraction(0, g, stage, true);
+                    // 2026-11-11: "השבר כמנת חילוק" kinds are solved in GeometryTracksAndDivisionTest.
+                    if (q.getText().startsWith("כתבו את") || q.getText().startsWith("התוצאה של")) continue;
                     checkShape(q);
                     String correct = q.getOptions().get(q.getCorrectIndex());
                     String t = q.getText();

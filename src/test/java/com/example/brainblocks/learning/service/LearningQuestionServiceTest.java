@@ -37,8 +37,10 @@ class LearningQuestionServiceTest {
                         for (QuestionResponse q : service.generate(topic, grade, diff, stage, 20)) {
                             String where = topic + "/" + grade + "/" + diff + "/" + stage + ": " + q.getText() + " " + q.getOptions();
                             List<String> opts = q.getOptions();
-                            assertEquals(4, opts.size(), where);
-                            assertEquals(4, new HashSet<>(opts).size(), "options must differ - " + where);
+                            // 2026-11-11: "smaller / equal / bigger than 1" has exactly three answers.
+                            int n = q.getText().startsWith("התוצאה של") ? 3 : 4;
+                            assertEquals(n, opts.size(), where);
+                            assertEquals(n, new HashSet<>(opts).size(), "options must differ - " + where);
                             assertTrue(q.getCorrectIndex() >= 0 && q.getCorrectIndex() < 4, where);
                             // Fractions / geometry inside mixed practice: solved in FractionGeometryQuestionsTest.
                             if (q.getTopic() == Topic.FRACTIONS || q.getTopic() == Topic.GEOMETRY) continue;

@@ -46,6 +46,8 @@ public class LearningQuestionService {
             // Mixed practice, daily challenge and 60 seconds show no picture - picture questions stay out.
             questions.add(actual == Topic.FRACTIONS ? fractionGeometry.fraction(i, g, s, topic != Topic.MIXED)
                     : actual == Topic.GEOMETRY ? fractionGeometry.geometry(i, s, topic != Topic.MIXED)
+                    : actual == Topic.ANGLES || actual == Topic.PERIMETER || actual == Topic.AREA
+                            ? fractionGeometry.geometryTrack(i, actual, s, true)
                     : buildQuestion(i, actual, g, d, s));
         }
         return questions;
@@ -81,6 +83,7 @@ public class LearningQuestionService {
             case MIXED -> addition(id, grade, diff, stage); // MIXED is resolved earlier; safety fallback
             case FRACTIONS -> fractionGeometry.fraction(id, grade, stage, true);
             case GEOMETRY -> fractionGeometry.geometry(id, stage, true);
+            case ANGLES, PERIMETER, AREA -> fractionGeometry.geometryTrack(id, topic, stage, true);
             // Island games build their own rounds in the client; a plain addition question is a safe fallback.
             case DRAGON, BALLOONS, BRIDGE, TRAIN -> addition(id, grade, diff, stage);
         };

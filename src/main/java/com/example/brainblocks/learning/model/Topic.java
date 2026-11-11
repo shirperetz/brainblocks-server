@@ -13,6 +13,10 @@ public enum Topic {
     // 2026-11-11: שברים (ה׳-ו׳) וגיאומטריה (ו׳) - FractionGeometryQuestions.
     FRACTIONS,
     GEOMETRY,
+    // 2026-11-11 (Shir): geometry as three tracks - זוויות, צלעות והיקף, שטח. GEOMETRY = all of them (mixed).
+    ANGLES,
+    PERIMETER,
+    AREA,
     // "אי המספרים" mini-games (2026-11-10): questions are made in the kids client, the server keeps stars/progress.
     DRAGON,
     BALLOONS,
