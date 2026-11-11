@@ -33,6 +33,7 @@ public class LearningQuestionService {
     private static final String GROUP_EMOJI = "⭐";
 
     private final SecureRandom random = new SecureRandom();
+    private final FractionGeometryQuestions fractionGeometry = new FractionGeometryQuestions(random);
 
     public List<QuestionResponse> generate(Topic topic, Grade grade, Difficulty difficulty, int stage, int count) {
         Grade g = grade == null ? Grade.G3 : grade;
@@ -42,7 +43,10 @@ public class LearningQuestionService {
         List<QuestionResponse> questions = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             Topic actual = topic == Topic.MIXED ? randomTopicForGrade(g) : topic;
-            questions.add(buildQuestion(i, actual, g, d, s));
+            // Mixed practice, daily challenge and 60 seconds show no picture - picture questions stay out.
+            questions.add(actual == Topic.FRACTIONS ? fractionGeometry.fraction(i, g, s, topic != Topic.MIXED)
+                    : actual == Topic.GEOMETRY ? fractionGeometry.geometry(i, s, topic != Topic.MIXED)
+                    : buildQuestion(i, actual, g, d, s));
         }
         return questions;
     }
@@ -55,6 +59,12 @@ public class LearningQuestionService {
         }
         if (grade.ordinal() >= Grade.G4.ordinal()) {
             pool.add(Topic.WORD_PROBLEMS);
+        }
+        if (grade.ordinal() >= Grade.G5.ordinal()) {
+            pool.add(Topic.FRACTIONS);
+        }
+        if (grade == Grade.G6) {
+            pool.add(Topic.GEOMETRY);
         }
         return pool.get(random.nextInt(pool.size()));
     }
@@ -69,6 +79,8 @@ public class LearningQuestionService {
             case SEQUENCES -> sequences(id, grade, diff, stage);
             case WORD_PROBLEMS -> wordProblem(id, grade, diff, stage);
             case MIXED -> addition(id, grade, diff, stage); // MIXED is resolved earlier; safety fallback
+            case FRACTIONS -> fractionGeometry.fraction(id, grade, stage, true);
+            case GEOMETRY -> fractionGeometry.geometry(id, stage, true);
             // Island games build their own rounds in the client; a plain addition question is a safe fallback.
             case DRAGON, BALLOONS, BRIDGE, TRAIN -> addition(id, grade, diff, stage);
         };

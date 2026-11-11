@@ -10,6 +10,9 @@ public enum Topic {
     SEQUENCES,
     WORD_PROBLEMS,
     MIXED,
+    // 2026-11-11: שברים (ה׳-ו׳) וגיאומטריה (ו׳) - FractionGeometryQuestions.
+    FRACTIONS,
+    GEOMETRY,
     // "אי המספרים" mini-games (2026-11-10): questions are made in the kids client, the server keeps stars/progress.
     DRAGON,
     BALLOONS,

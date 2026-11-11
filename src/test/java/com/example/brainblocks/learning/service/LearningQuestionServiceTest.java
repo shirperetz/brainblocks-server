@@ -40,6 +40,8 @@ class LearningQuestionServiceTest {
                             assertEquals(4, opts.size(), where);
                             assertEquals(4, new HashSet<>(opts).size(), "options must differ - " + where);
                             assertTrue(q.getCorrectIndex() >= 0 && q.getCorrectIndex() < 4, where);
+                            // Fractions / geometry inside mixed practice: solved in FractionGeometryQuestionsTest.
+                            if (q.getTopic() == Topic.FRACTIONS || q.getTopic() == Topic.GEOMETRY) continue;
                             for (String o : opts) assertTrue(Long.parseLong(o) >= 0, "no negative options - " + where);
                             long marked = Long.parseLong(opts.get(q.getCorrectIndex()));
                             Long expected = expectedAnswer(q, opts);
