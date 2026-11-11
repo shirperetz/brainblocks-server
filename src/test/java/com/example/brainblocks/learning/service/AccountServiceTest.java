@@ -54,6 +54,29 @@ class AccountServiceTest {
     }
 
     @Test
+    void signUpNeedsTheJoinCode() {
+        List<LearnerProfile> db = new ArrayList<>();
+        var a = withCode(db, "482915");
+        assertThatThrownBy(() -> a.register(null, "noa", "1234", "נועה", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
+        assertThatThrownBy(() -> a.register("000000", "noa", "1234", "נועה", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
+        assertThat(a.register(" 482915 ", "noa", "1234", "נועה", "ROBOT", null, null).token()).isNotBlank();
+        var closed = withCode(new ArrayList<>(), "");
+        assertThatThrownBy(() -> closed.register("", "dan", "1234", "דן", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
+    }
+
+    private static AccountService withCode(List<LearnerProfile> db, String code) {
+        AccountService base = service(db);
+        try {
+            var f = AccountService.class.getDeclaredField("repository");
+            f.setAccessible(true);
+            var repo = (LearnerProfileRepository) f.get(base);
+            return new AccountService(repo, new LearnerProfileService(repo), code);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
     void fiveWrongPasswordsPauseTheUsername() {
         AccountService a = service(new ArrayList<>());
         a.register("dan", "secret", "דן", "ROBOT", null, null);

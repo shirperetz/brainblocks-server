@@ -52,12 +52,36 @@ public class AccountService {
     public record Session(String token, ProfileResponse profile) {
     }
 
+    /**
+     * 2026-11-11 (public link): a new child needs the join code Shir hands out - strangers who find
+     * the link see only the log-in. Kept in local.properties (brainblocks.join-code), not in git.
+     * Blank = sign-up closed.
+     */
+    private final String joinCode;
+
     public AccountService(LearnerProfileRepository repository, LearnerProfileService profileService) {
-        this.repository = repository;
-        this.profileService = profileService;
+        this(repository, profileService, "");
     }
 
-    public Session register(String username, String password, String name, String avatar, String grade, String difficulty) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public AccountService(LearnerProfileRepository repository, LearnerProfileService profileService,
+                          @org.springframework.beans.factory.annotation.Value("${brainblocks.join-code:}") String joinCode) {
+        this.repository = repository;
+        this.profileService = profileService;
+        this.joinCode = joinCode == null ? "" : joinCode.trim();
+    }
+
+    public Session register(String joinCode, String username, String password, String name, String avatar,
+                            String grade, String difficulty) {
+        if (this.joinCode.isEmpty() || joinCode == null
+                || !MessageDigest.isEqual(this.joinCode.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        joinCode.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "קוד ההצטרפות לא נכון. בקשו אותו מההורים או מהמורה");
+        }
+        return register(username, password, name, avatar, grade, difficulty);
+    }
+
+    Session register(String username, String password, String name, String avatar, String grade, String difficulty) {
         String user = normalize(username);
         if (!USERNAME.matcher(user).matches()) {
             throw bad("שם המשתמש צריך להיות 3 עד 20 אותיות או ספרות, בלי רווחים");

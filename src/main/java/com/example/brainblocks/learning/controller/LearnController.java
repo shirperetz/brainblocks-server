@@ -85,7 +85,7 @@ public class LearnController {
     @PostMapping("/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
     public AccountService.Session register(@RequestBody Map<String, String> body) {
-        return accountService.register(body.get("username"), body.get("password"), body.get("name"),
+        return accountService.register(body.get("joinCode"), body.get("username"), body.get("password"), body.get("name"),
                 body.get("avatar"), body.get("grade"), body.get("difficulty"));
     }
 
