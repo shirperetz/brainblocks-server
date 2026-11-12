@@ -126,12 +126,18 @@ public class PublicAccessConfig implements WebMvcConfigurer {
     @Bean
     FilterRegistrationBean<OncePerRequestFilter> publicLimits() {
         Limiter register = new Limiter(5, 60 * MINUTE);   // new children per address per hour
-        Limiter login = new Limiter(20, 10 * MINUTE);     // log-in tries per address
+        // 2026-11-12 (the live game room): a whole class logs in from ONE school address at the start of a
+        // lesson - 20 per 10 minutes would lock children out. Guessing passwords is still stopped per
+        // user (5 wrong -> 5 minutes, AccountService).
+        Limiter login = new Limiter(60, 10 * MINUTE);     // log-in tries per address
         Limiter ai = new Limiter(20, MINUTE);              // "לא הבנתי" (local AI) per address
         // 2026-11-12: 🔊 reading every question aloud - a whole class behind one school address would pass
         // 20/min at once; repeats come from SpeechService's memory, so it gets its own, bigger allowance.
         Limiter speech = new Limiter(120, MINUTE);
         Limiter all = new Limiter(600, MINUTE);            // every /api call per address
+        // A room polls every 2 s per child (30 children = 900/min from one school address): its own allowance.
+        Limiter room = new Limiter(4000, MINUTE);
+        Limiter guestJoin = new Limiter(40, 10 * MINUTE);  // guests joining rooms, per address
         Clock clock = Clock.systemUTC();
         OncePerRequestFilter filter = new OncePerRequestFilter() {
             private long lastCleanup;
@@ -144,7 +150,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                     long now = clock.millis();
                     if (now - lastCleanup > 10 * MINUTE) {
                         lastCleanup = now;
-                        for (Limiter l : new Limiter[] {register, login, ai, speech, all}) {
+                        for (Limiter l : new Limiter[] {register, login, ai, speech, all, room, guestJoin}) {
                             l.cleanup(now);
                         }
                     }
@@ -154,7 +160,9 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                         // who tried to sign up, and from where (Shir: "nobody gets in without me knowing")
                         org.slf4j.LoggerFactory.getLogger("brainblocks.signup").info("sign-up attempt from {}", who);
                     }
-                    boolean ok = all.allow(who, now)
+                    boolean inRoom = path.startsWith("/api/learn/rooms/") || path.startsWith("/api/learn/room-guest/");
+                    boolean ok = (inRoom ? room.allow(who, now) : all.allow(who, now))
+                            && (!post || !path.equals("/api/learn/room-guest/join") || guestJoin.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/register") || register.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/login") || login.allow(who, now))
                             && (!post || !path.equals("/api/learn/help") || ai.allow(who, now))

@@ -41,6 +41,7 @@ public class LearnerAuthConfig implements WebMvcConfigurer {
                 request.setAttribute(ATTRIBUTE, id.get());
                 return true;
             }
-        }).addPathPatterns("/api/learn/**").excludePathPatterns("/api/learn/auth/**");
+        }).addPathPatterns("/api/learn/**").excludePathPatterns("/api/learn/auth/**", "/api/learn/room-guest/**");
+        // 2026-11-12: a game-room guest has no account - RoomGuestController checks its own per-room token.
     }
 }

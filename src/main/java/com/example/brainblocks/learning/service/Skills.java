@@ -75,6 +75,7 @@ public final class Skills {
         NAMES.put("ANG_AROUND_POINT", "זוויות סביב נקודה");
         NAMES.put("ANG_ISOSCELES", "משולש שווה-שוקיים");
         NAMES.put("ANG_QUADRILATERAL", "זוויות במרובע"); // 2026-11-12: ו׳
+        NAMES.put("TEACHER_OWN", "תרגילים של המורה"); // 2026-11-12: the game room
         NAMES.put("ANG_VERTICAL_ADJACENT", "זוויות קודקודיות וצמודות");
         NAMES.put("AREA_PARALLELOGRAM", "שטח מקבילית");
         NAMES.put("PER_CIRCLE", "היקף עיגול");
