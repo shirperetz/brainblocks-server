@@ -35,6 +35,53 @@ public class LearningQuestionService {
     private final SecureRandom random = new SecureRandom();
     private final FractionGeometryQuestions fractionGeometry = new FractionGeometryQuestions(random);
 
+    /** How many extra draws per slot before a round accepts a repeat (a topic with few possible exercises). */
+    static final int FRESH_TRIES = 8;
+
+    /**
+     * 2026-11-12 (Shir: "always different exercises, unless the child got it wrong"): a round with no
+     * exercise twice, and none of [avoid] (what this child answered right lately in this topic) - as long
+     * as the topic has enough different exercises; a small topic (e.g. א׳ stage 1) never gets stuck, it
+     * takes the least-repeated one. Slot by slot, so the first questions stay the small-number ones.
+     */
+    public List<QuestionResponse> generateFresh(Topic topic, Grade grade, Difficulty difficulty, int stage, int count,
+                                                Set<String> avoid) {
+        List<List<QuestionResponse>> draws = new ArrayList<>();
+        for (int k = 0; k <= FRESH_TRIES; k++) draws.add(generate(topic, grade, difficulty, stage, count));
+        Set<String> used = new java.util.HashSet<>();
+        List<QuestionResponse> out = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            QuestionResponse pick = null;
+            // 1st choice: new in this round and not answered right lately; 2nd: at least new in this round.
+            for (int pass = 0; pass < 2 && pick == null; pass++) {
+                for (List<QuestionResponse> d : draws) {
+                    QuestionResponse q = d.get(i);
+                    String key = key(q);
+                    if (!used.contains(key) && (pass == 1 || avoid == null || !avoid.contains(key))) {
+                        pick = q;
+                        break;
+                    }
+                }
+            }
+            if (pick == null) pick = draws.get(0).get(i);
+            used.add(key(pick));
+            out.add(pick);
+        }
+        return out;
+    }
+
+    /**
+     * The same exercise = the same words AND the same right answer ("כמה צלעות יש לצורה?" with a
+     * triangle and with a hexagon are two exercises). Spaces don't make it new.
+     */
+    public static String key(String text, String correct) {
+        return (text == null ? "" : text.replaceAll("\\s+", " ").strip()) + "|" + (correct == null ? "" : correct.strip());
+    }
+
+    public static String key(QuestionResponse q) {
+        return key(q.getText(), q.getOptions().get(q.getCorrectIndex()));
+    }
+
     public List<QuestionResponse> generate(Topic topic, Grade grade, Difficulty difficulty, int stage, int count) {
         Grade g = grade == null ? Grade.G3 : grade;
         Difficulty d = difficulty == null ? Difficulty.MEDIUM : difficulty;
@@ -176,7 +223,7 @@ public class LearningQuestionService {
     private QuestionResponse multiplication(int id, Grade grade, Difficulty diff, int stage) {
         int max = Math.max(3, scaled(factorMax(grade), stage, diff));
         int a = grade == Grade.G2 ? G2_TABLES[random.nextInt(stage <= 2 ? 2 : 3)] : rand(2, max);
-        int b = grade == Grade.G2 ? rand(2, stage <= 2 ? 5 : 10) : rand(2, max);
+        int b = grade == Grade.G2 ? rand(2, 10) : rand(2, max);
         int result = a * b;
         VisualModel visual = (a <= 5 && b <= 5)
                 ? new VisualModel("GROUPS", GROUP_EMOJI, a, b, result, "×")
@@ -192,7 +239,7 @@ public class LearningQuestionService {
     private QuestionResponse division(int id, Grade grade, Difficulty diff, int stage) {
         int max = Math.max(3, scaled(factorMax(grade), stage, diff));
         int b = grade == Grade.G2 ? G2_TABLES[random.nextInt(stage <= 2 ? 2 : 3)] : rand(2, max);
-        int result = grade == Grade.G2 ? rand(2, stage <= 2 ? 5 : 10) : rand(2, max);
+        int result = grade == Grade.G2 ? rand(2, 10) : rand(2, max);
         int a = b * result;
         return build(id, Topic.DIVISION,
                 "כמה זה " + a + " ÷ " + b + "?",

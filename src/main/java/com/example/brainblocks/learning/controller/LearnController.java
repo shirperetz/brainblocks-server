@@ -159,9 +159,17 @@ public class LearnController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
         }
         // 2026-11-12 (idea #3): one level harder after >=90% right in this topic, easier after <=50%.
-        var difficulty = com.example.brainblocks.learning.service.AdaptiveDifficulty.forTopic(
-                profile.getDifficulty(), t, answerRepository.findByProfileId(profileId));
-        return questionService.generate(t, profile.getGrade(), difficulty, stage, clamped);
+        var history = answerRepository.findByProfileId(profileId);
+        var difficulty = com.example.brainblocks.learning.service.AdaptiveDifficulty.forTopic(profile.getDifficulty(), t, history);
+        // 2026-11-12 (Shir: "always different exercises"): not the ones answered right lately in this topic.
+        java.util.Set<String> recentRight = history.stream()
+                .filter(a -> a.isCorrect() && a.getTopic() == t && a.getQuestionText() != null)
+                .sorted(java.util.Comparator.comparing(com.example.brainblocks.learning.model.LearnerAnswer::getCreatedAt,
+                        java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())).reversed())
+                .limit(200)
+                .map(a -> com.example.brainblocks.learning.service.LearningQuestionService.key(a.getQuestionText(), a.getCorrectAnswer()))
+                .collect(java.util.stream.Collectors.toSet());
+        return questionService.generateFresh(t, profile.getGrade(), difficulty, stage, clamped, recentRight);
     }
 
     @GetMapping("/profiles/{id}/map")
