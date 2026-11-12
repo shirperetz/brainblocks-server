@@ -179,6 +179,15 @@ public class LearnerProfile {
     public LocalDateTime getTokenUsedAt() { return tokenUsedAt; }
     public void setTokenUsedAt(LocalDateTime tokenUsedAt) { this.tokenUsedAt = tokenUsedAt; }
 
+    /**
+     * 2026-11-12 (Shir: "limit the child to a specific grade, not all grades"): the admin/teacher set the
+     * grade and the child can't change it; only that grade's topics give questions. null = not locked.
+     */
+    private Boolean gradeLocked;
+
+    public boolean isGradeLocked() { return Boolean.TRUE.equals(gradeLocked); }
+    public void setGradeLocked(boolean locked) { this.gradeLocked = locked; }
+
     /** 2026-11-11: the companion animal the child chose (null = the default fox; "NONE" = hidden). */
     @Column(length = 12)
     private String companion;

@@ -145,7 +145,12 @@ public class LearnController {
         own(profileId, me);
         LearnerProfile profile = profileService.findProfile(profileId);
         int clamped = Math.min(Math.max(count, 1), 20);
-        return questionService.generate(parseTopic(topic), profile.getGrade(),
+        Topic t = parseTopic(topic);
+        // 2026-11-12: a child locked to a grade practices only that grade's topics.
+        if (profile.isGradeLocked() && !com.example.brainblocks.learning.service.GradeTopics.allowed(t, profile.getGrade())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
+        }
+        return questionService.generate(t, profile.getGrade(),
                 profile.getDifficulty(), stage, clamped);
     }
 
@@ -160,6 +165,11 @@ public class LearnController {
     public SessionSummaryResponse submitSession(@RequestBody SubmitSessionRequest request,
                                                 @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         own(request.getProfileId(), me);
+        LearnerProfile p = profileService.findProfile(request.getProfileId());
+        if (p.isGradeLocked() && request.getTopic() != null
+                && !com.example.brainblocks.learning.service.GradeTopics.allowed(parseTopic(request.getTopic()), p.getGrade())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
+        }
         return progressService.submitSession(request);
     }
 

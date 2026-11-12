@@ -203,6 +203,11 @@ public class AccountService {
                 Session s = register(username, password, name, avatar, grade, difficulty);
                 LearnerProfile p = profileService.findProfile(s.profile().getId());
                 p.setClassId(cls.get().getId());
+                // 2026-11-12: the class's grade (if the teacher set one) - the child's, locked.
+                if (cls.get().getGrade() != null) {
+                    p.setGrade(cls.get().getGrade());
+                    p.setGradeLocked(true);
+                }
                 repository.save(p);
                 return new Session(s.token(), ProfileResponse.fromEntity(p));
             }

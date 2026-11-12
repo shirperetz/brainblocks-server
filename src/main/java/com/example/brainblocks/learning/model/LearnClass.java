@@ -35,6 +35,14 @@ public class LearnClass {
 
     private Boolean closed;
 
+    /** 2026-11-12: the grade this class practices; its children get it, locked. null = not set. */
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(length = 8)
+    private Grade grade;
+
+    public Grade getGrade() { return grade; }
+    public void setGrade(Grade grade) { this.grade = grade; }
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

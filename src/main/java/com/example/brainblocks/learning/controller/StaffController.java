@@ -77,6 +77,7 @@ public class StaffController {
             m.put("name", c.getName());
             m.put("joinCode", c.getJoinCode());
             m.put("closed", c.isClosed());
+            m.put("grade", c.getGrade());
             m.put("teacherId", c.getTeacherId());
             m.put("teacherName", everyone.stream().filter(p -> p.getId().equals(c.getTeacherId()))
                     .map(LearnerProfile::getName).findFirst().orElse(""));
@@ -100,7 +101,9 @@ public class StaffController {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "אין מורה כזו"));
             teacherId = t.getId();
         }
-        LearnClass c = classes.save(new LearnClass(name, teacherId, accounts.newClassCode()));
+        LearnClass created = new LearnClass(name, teacherId, accounts.newClassCode());
+        if (body.get("grade") != null && !body.get("grade").toString().isBlank()) created.setGrade(grade(body.get("grade")));
+        LearnClass c = classes.save(created);
         return Map.of("id", c.getId(), "name", c.getName(), "joinCode", c.getJoinCode());
     }
 
@@ -113,6 +116,19 @@ public class StaffController {
         if (body.get("name") != null) c.setName(className(body.get("name")));
         if (body.get("closed") != null) c.setClosed(Boolean.parseBoolean(body.get("closed").toString()));
         if (Boolean.TRUE.equals(body.get("newCode"))) c.setJoinCode(accounts.newClassCode());
+        // 2026-11-12: the class's grade - every child in it gets it, locked ("" = no grade, unlocks them).
+        if (body.containsKey("grade")) {
+            Object g = body.get("grade");
+            var newGrade = g == null || g.toString().isBlank() ? null : grade(g);
+            c.setGrade(newGrade);
+            for (LearnerProfile p : profiles.findAll()) {
+                if (c.getId().equals(p.getClassId()) && !p.isTeacher() && !p.isAdmin()) {
+                    if (newGrade != null) p.setGrade(newGrade);
+                    p.setGradeLocked(newGrade != null);
+                    profiles.save(p);
+                }
+            }
+        }
         classes.save(c);
         return Map.of("id", c.getId(), "name", c.getName(), "joinCode", c.getJoinCode(), "closed", c.isClosed());
     }
@@ -146,6 +162,7 @@ public class StaffController {
             m.put("avatar", p.getAvatar());
             m.put("grade", p.getGrade());
             m.put("classId", p.getClassId());
+            m.put("gradeLocked", p.isGradeLocked());
             m.put("approved", p.isApproved());
             m.put("disabled", p.isDisabled());
             m.put("lastActiveAt", p.getLastActiveAt());
@@ -185,6 +202,29 @@ public class StaffController {
                                     @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         staffOver(me, id);
         return accounts.setCredentials(id, body.get("username"), body.get("password"));
+    }
+
+    /**
+     * 2026-11-12 (Shir: "limit the child to a specific grade"): body { grade: "G4", locked: true }.
+     * The child's teacher or the admin. locked=false lets the child choose again.
+     */
+    @PostMapping("/children/{id}/grade")
+    public ProfileResponse setGrade(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                    @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        staffOver(me, id);
+        LearnerProfile p = profiles.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין ילד כזה"));
+        if (body.get("grade") != null) p.setGrade(grade(body.get("grade")));
+        if (body.get("locked") != null) p.setGradeLocked(Boolean.parseBoolean(body.get("locked").toString()));
+        profiles.save(p);
+        return ProfileResponse.fromEntity(p);
+    }
+
+    private static com.example.brainblocks.learning.model.Grade grade(Object raw) {
+        try {
+            return com.example.brainblocks.learning.model.Grade.valueOf(raw.toString().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "כיתה לא מוכרת");
+        }
     }
 
     /** Admin only: move a child to a class (classId null/0 = Shir's own). */

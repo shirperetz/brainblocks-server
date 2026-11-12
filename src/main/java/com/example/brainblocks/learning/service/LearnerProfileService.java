@@ -57,7 +57,13 @@ public class LearnerProfileService {
             profile.setAvatar(parseEnum(Avatar.class, request.getAvatar(), "avatar"));
         }
         if (request.getGrade() != null) {
-            profile.setGrade(parseEnum(Grade.class, request.getGrade(), "grade"));
+            Grade g = parseEnum(Grade.class, request.getGrade(), "grade");
+            // 2026-11-12: a grade set (locked) by the admin/teacher can't be changed by the child.
+            if (profile.isGradeLocked() && g != profile.getGrade()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "המורה קבעה את הכיתה שלך");
+            }
+            profile.setGrade(g);
         }
         if (request.getDifficulty() != null) {
             profile.setDifficulty(parseEnum(Difficulty.class, request.getDifficulty(), "difficulty"));

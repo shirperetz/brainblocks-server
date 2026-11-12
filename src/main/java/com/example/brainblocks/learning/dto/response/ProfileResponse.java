@@ -40,8 +40,19 @@ public class ProfileResponse {
                 p.getId(), p.getName(), p.getAvatar(), p.getGrade(), p.getDifficulty(),
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
         ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved())
-                .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion());
+                .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion())
+                .withGradeLocked(p.isGradeLocked());
     }
+
+    /** 2026-11-12: the grade was set by the admin/teacher - the child can't change it. */
+    private boolean gradeLocked;
+
+    private ProfileResponse withGradeLocked(boolean locked) {
+        this.gradeLocked = locked;
+        return this;
+    }
+
+    public boolean isGradeLocked() { return gradeLocked; }
 
     /** 2026-11-11: the companion animal (null = default). */
     private String companion;

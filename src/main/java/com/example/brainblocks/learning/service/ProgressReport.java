@@ -212,6 +212,7 @@ public final class ProgressReport {
         c.put("name", p.getName());
         c.put("avatar", p.getAvatar());
         c.put("grade", p.getGrade());
+        c.put("gradeLocked", p.isGradeLocked());
         c.put("username", p.getUsername());
         c.put("totalPoints", p.getTotalPoints());
         LocalDate today = now.toLocalDate();
