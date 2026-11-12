@@ -330,6 +330,20 @@ public class StaffController {
         return Map.of("id", a.getId(), "topic", a.getTopic(), "rounds", a.getRounds(), "endDate", a.getEndDate().toString());
     }
 
+    // ---- the class building (idea #6, 2026-11-12) ----
+
+    private com.example.brainblocks.learning.service.ClassBuildingService building;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setBuilding(com.example.brainblocks.learning.service.ClassBuildingService building) {
+        this.building = building;
+    }
+
+    @GetMapping("/classes/{id}/building")
+    public Map<String, Object> classBuilding(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return building.forClass(me, id);
+    }
+
     @PostMapping("/assignments/{id}/cancel")
     public Map<String, Object> cancelAssignment(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         assignments.cancel(me, id);

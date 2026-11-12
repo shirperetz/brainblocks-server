@@ -281,6 +281,21 @@ public class LearnController {
         return assignmentService.forChild(profileService.findProfile(id));
     }
 
+    /** 2026-11-12 (idea #6): the building the child's class builds this week ({} without a class). */
+    private com.example.brainblocks.learning.service.ClassBuildingService classBuilding;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setClassBuilding(com.example.brainblocks.learning.service.ClassBuildingService s) {
+        this.classBuilding = s;
+    }
+
+    @GetMapping("/profiles/{id}/class-building")
+    public Map<String, Object> classBuilding(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
+        Map<String, Object> b = classBuilding.forChild(profileService.findProfile(id));
+        return b == null ? Map.of() : b;
+    }
+
     private Topic parseTopic(String value) {
         try {
             return Topic.valueOf(value.trim().toUpperCase());

@@ -141,6 +141,20 @@ class WeeklyAssignmentTest {
         assertThat(status("/api/learn/staff/children/" + otherId + "/approve", HttpMethod.POST, dana, null)).isEqualTo(200);
         assertThat(status("/api/learn/profiles/" + otherId + "/assignments", HttpMethod.GET, k, null)).isEqualTo(404);
 
+        // Idea #6 - the class building: 2 children -> 60 right answers; kid's ~60 count, kid2 helped with none.
+        Map<String, Object> b = call("/api/learn/profiles/" + kidId + "/class-building", HttpMethod.GET, k, null, Map.class);
+        long mineRight = ((Number) b.get("mine")).longValue();
+        assertThat(mineRight).isGreaterThan(40);
+        assertThat(b).containsEntry("target", 60).containsEntry("children", 2).containsEntry("helped", 1)
+                .containsEntry("className", "ה׳1");
+        assertThat(((Number) b.get("built")).longValue()).isEqualTo(Math.min(mineRight, 60));
+        Map<String, Object> tb = call("/api/learn/staff/classes/" + classId + "/building", HttpMethod.GET, dana, null, Map.class);
+        assertThat(tb.get("built")).isEqualTo(b.get("built"));
+        assertThat(tb).doesNotContainKey("mine");
+        assertThat(status("/api/learn/staff/classes/" + classId + "/building", HttpMethod.GET, rina, null)).isEqualTo(403);
+        assertThat(status("/api/learn/staff/classes/" + classId + "/building", HttpMethod.GET, k, null)).isEqualTo(403);
+        assertThat(status("/api/learn/profiles/" + otherId + "/class-building", HttpMethod.GET, k, null)).isEqualTo(404);
+
         // At most 3 running tasks.
         assertThat(status(base, HttpMethod.POST, dana, Map.of("topic", "AREA", "rounds", 2, "days", 5))).isEqualTo(200);
         assertThat(status(base, HttpMethod.POST, dana, Map.of("topic", "ANGLES"))).isEqualTo(200);
@@ -159,5 +173,6 @@ class WeeklyAssignmentTest {
         assertThat(call("/api/learn/profiles/" + otherId + "/assignments", HttpMethod.GET, k2, null, List.class)).hasSize(2);
         assertThat(status("/api/learn/staff/children/" + otherId + "/class", HttpMethod.POST, boss, Map.of("classId", 0))).isEqualTo(200);
         assertThat(call("/api/learn/profiles/" + otherId + "/assignments", HttpMethod.GET, k2, null, List.class)).isEmpty();
+        assertThat(call("/api/learn/profiles/" + otherId + "/class-building", HttpMethod.GET, k2, null, Map.class)).isEmpty();
     }
 }
