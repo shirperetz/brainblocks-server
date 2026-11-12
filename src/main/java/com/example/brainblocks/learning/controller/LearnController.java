@@ -203,26 +203,50 @@ public class LearnController {
 
     // ---- Review mistakes + challenges -------------------------------------
 
-    /** Mistakes not fixed yet, newest first (at most 20). */
+    /** Mistakes due for review today (2026-11-12: a day / 3 days / a week after a right answer), newest first (at most 20). */
     @GetMapping("/profiles/{id}/mistakes")
     public List<MistakeDto> mistakes(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         own(id, me);
         profileService.findProfile(id);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
         return mistakeRepository.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(id).stream()
-                .limit(20).map(MistakeDto::fromEntity).toList();
+                .filter(m -> m.isDue(now)).limit(20).map(MistakeDto::fromEntity).toList();
     }
 
-    /** The child answered a past mistake correctly - it leaves the review list. */
+    /** Right in the review: back after 1, 3, 7 days, then learned (LearnerMistake.reviewedRight). */
     @PostMapping("/mistakes/{id}/resolve")
-    public Map<String, Boolean> resolveMistake(@PathVariable Long id, @RequestParam Long profileId,
-                                               @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+    public Map<String, Object> resolveMistake(@PathVariable Long id, @RequestParam Long profileId,
+                                              @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        LearnerMistake m = ownMistake(id, profileId, me);
+        m.reviewedRight(java.time.LocalDateTime.now());
+        mistakeRepository.save(m);
+        return reviewResult(m);
+    }
+
+    /** 2026-11-12: wrong in the review - back tomorrow, from the start. */
+    @PostMapping("/mistakes/{id}/missed")
+    public Map<String, Object> missedMistake(@PathVariable Long id, @RequestParam Long profileId,
+                                             @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        LearnerMistake m = ownMistake(id, profileId, me);
+        m.reviewedWrong(java.time.LocalDateTime.now());
+        mistakeRepository.save(m);
+        return reviewResult(m);
+    }
+
+    private LearnerMistake ownMistake(Long id, Long profileId, Long me) {
         own(profileId, me);
         LearnerMistake m = mistakeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "mistake not found"));
         if (!m.getProfileId().equals(profileId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "mistake not found");
-        m.resolve();
-        mistakeRepository.save(m);
-        return Map.of("resolved", true);
+        return m;
+    }
+
+    private static Map<String, Object> reviewResult(LearnerMistake m) {
+        Map<String, Object> r = new java.util.LinkedHashMap<>();
+        r.put("resolved", m.isResolved());
+        r.put("nextReviewAt", m.getNextReviewAt());
+        r.put("step", m.getReviewStep());
+        return r;
     }
 
     /** For the home screen: daily streak, whether today's challenge is done, best 60-second score, open mistakes. */
@@ -236,7 +260,9 @@ public class LearnController {
         java.time.LocalDate today = java.time.LocalDate.now();
         boolean dailyDone = today.equals(p.getLastDailyDate());
         int streak = dailyDone || today.minusDays(1).equals(p.getLastDailyDate()) ? p.getDailyStreak() : 0;
-        long open = mistakeRepository.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(id).size();
+        java.time.LocalDateTime nowT = java.time.LocalDateTime.now();
+        long open = mistakeRepository.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(id).stream()
+                .filter(m -> m.isDue(nowT)).count(); // 2026-11-12: due for review today
         return Map.of("dailyStreak", streak, "dailyDone", dailyDone, "bestTimed", bestTimed,
                 "openMistakes", open, "totalPoints", p.getTotalPoints());
     }

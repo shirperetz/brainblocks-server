@@ -67,6 +67,36 @@ public class LearnerMistake {
         this.resolved = true;
     }
 
+    // 2026-11-12 (idea #4 - review again after a day, 3 days, a week): one right answer in the review no
+    // longer ends it. Right -> back in 1, then 3, then 7 days; right the 4th time -> learned (resolved).
+    // Wrong in the review -> back tomorrow, from the start. null = due now (a fresh mistake).
+    static final int[] GAP_DAYS = {1, 3, 7};
+
+    private Integer reviewStep;
+    private LocalDateTime nextReviewAt;
+
+    public int getReviewStep() { return reviewStep == null ? 0 : reviewStep; }
+    public LocalDateTime getNextReviewAt() { return nextReviewAt; }
+
+    public boolean isDue(LocalDateTime now) {
+        return !resolved && (nextReviewAt == null || !nextReviewAt.isAfter(now));
+    }
+
+    public void reviewedRight(LocalDateTime now) {
+        int step = getReviewStep();
+        if (step >= GAP_DAYS.length) {
+            resolved = true;
+            return;
+        }
+        nextReviewAt = now.plusDays(GAP_DAYS[step]);
+        reviewStep = step + 1;
+    }
+
+    public void reviewedWrong(LocalDateTime now) {
+        reviewStep = 0;
+        nextReviewAt = now.plusDays(1);
+    }
+
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();
