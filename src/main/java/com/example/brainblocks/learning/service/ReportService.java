@@ -61,6 +61,7 @@ public class ReportService {
         List<Map<String, Object>> rows = new ArrayList<>();
         Map<String, Integer> hardCount = new HashMap<>();
         Map<String, String> hardName = new HashMap<>();
+        Map<String, Integer> mistakeCount = new HashMap<>(); // 2026-11-12: children per kind of mistake
         for (LearnerProfile p : access.visibleChildren(viewer, classId)) {
             Map<String, Object> report = report(p);
             Map<String, Object> row = ProgressReport.summary(report);
@@ -74,6 +75,10 @@ public class ReportService {
                     hardName.put((String) s.get("skill"), (String) s.get("name"));
                 }
             }
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> patterns = (List<Map<String, Object>>) report.get("patterns");
+            patterns.stream().map(m -> (String) m.get("type")).distinct()
+                    .forEach(t -> mistakeCount.merge(t, 1, Integer::sum));
         }
         // Children who need attention first, then by name.
         rows.sort(Comparator.comparing((Map<String, Object> r) -> ((List<?>) r.get("attention")).isEmpty())
@@ -93,6 +98,19 @@ public class ReportService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("children", rows);
         out.put("commonHard", common);
+        out.put("commonMistakes", mistakeCount.entrySet().stream()
+                .filter(e -> e.getValue() >= 2)
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(5)
+                .map(e -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("type", e.getKey());
+                    m.put("label", Mistakes.label(e.getKey()));
+                    m.put("tip", Mistakes.tip(e.getKey()));
+                    m.put("children", e.getValue());
+                    return m;
+                })
+                .toList());
         return out;
     }
 }

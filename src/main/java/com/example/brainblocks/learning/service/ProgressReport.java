@@ -150,9 +150,25 @@ public final class ProgressReport {
                 ex.put("correct", a.getCorrectAnswer());
                 m.put("example", ex);
             });
+            Map<String, Object> pattern = pattern(recent);
+            if (pattern != null) m.put("pattern", pattern);
             skills.add(m);
         }
         r.put("skills", skills);
+        // 2026-11-12 (stage 2/B): the mistakes that come back - where they come from, across skills.
+        List<Map<String, Object>> patterns = new ArrayList<>();
+        for (Map<String, Object> m : skills) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> pt = (Map<String, Object>) m.get("pattern");
+            if (pt == null) continue;
+            Map<String, Object> row = new LinkedHashMap<>(pt);
+            row.put("skill", m.get("skill"));
+            row.put("skillName", m.get("name"));
+            row.put("topic", m.get("topic"));
+            patterns.add(row);
+        }
+        patterns.sort(Comparator.comparingInt((Map<String, Object> m) -> (int) m.get("count")).reversed());
+        r.put("patterns", patterns.size() <= 3 ? patterns : patterns.subList(0, 3));
         List<Map<String, Object>> hard = skills.stream().filter(m -> "HARD".equals(m.get("level")))
                 .sorted(Comparator.comparingInt(m -> (int) m.get("pct"))).limit(3).toList();
         List<Map<String, Object>> strong = skills.stream().filter(m -> "STRONG".equals(m.get("level")))
@@ -199,6 +215,7 @@ public final class ProgressReport {
             attention.add("3 סבבים ברצף בלי לעבור");
         }
         if (!hard.isEmpty()) attention.add("מתקשה ב" + hard.get(0).get("name"));
+        if (!patterns.isEmpty()) attention.add("טעות חוזרת: " + patterns.get(0).get("label"));
         r.put("attention", attention);
 
         r.put("openMistakes", (int) mistakes.stream().filter(m -> !m.isResolved()).count());
@@ -260,6 +277,44 @@ public final class ProgressReport {
                 });
     }
 
+    /** A mistake that comes back: at least this many of one kind in a skill's recent answers. */
+    static final int PATTERN_MIN = 3;
+
+    /**
+     * The kind of mistake that keeps coming back in these answers ({@link Mistakes}), or null. Only from
+     * {@link #PATTERN_MIN} of the same kind - one slip is not a pattern - and never UNKNOWN; a child who
+     * now gets it right drops below the line by itself (only the recent answers count).
+     */
+    static Map<String, Object> pattern(List<LearnerAnswer> recent) {
+        Map<String, List<LearnerAnswer>> byType = new LinkedHashMap<>();
+        for (LearnerAnswer a : recent) {
+            if (a.isCorrect()) continue;
+            String type = Mistakes.classify(a.getTopic(), a.getQuestionText(), a.getCorrectAnswer(), a.getGivenAnswer());
+            if (!Mistakes.known(type)) continue;
+            byType.computeIfAbsent(type, k -> new ArrayList<>()).add(a);
+        }
+        return byType.entrySet().stream()
+                .filter(e -> e.getValue().size() >= PATTERN_MIN)
+                .max(Comparator.comparingInt((Map.Entry<String, List<LearnerAnswer>> e) -> e.getValue().size())
+                        // a slip (±1) is the weakest explanation - on a tie, the real misconception wins
+                        .thenComparing(e -> !Mistakes.COUNTING.equals(e.getKey())))
+                .map(e -> {
+                    LearnerAnswer last = e.getValue().get(e.getValue().size() - 1);
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("type", e.getKey());
+                    m.put("label", Mistakes.label(e.getKey()));
+                    m.put("tip", Mistakes.tip(e.getKey()));
+                    m.put("count", e.getValue().size());
+                    Map<String, Object> ex = new LinkedHashMap<>();
+                    ex.put("question", last.getQuestionText());
+                    ex.put("given", last.getGivenAnswer());
+                    ex.put("correct", last.getCorrectAnswer());
+                    m.put("example", ex);
+                    return m;
+                })
+                .orElse(null);
+    }
+
     private static int mostCommonStage(List<LearnerAnswer> list) {
         return list.stream().collect(Collectors.groupingBy(LearnerAnswer::getStageNumber, Collectors.counting()))
                 .entrySet().stream().max(Map.Entry.<Integer, Long>comparingByValue().thenComparing(Map.Entry.comparingByKey()))
@@ -285,6 +340,7 @@ public final class ProgressReport {
         }
         s.put("topics", levels);
         s.put("hard", report.get("hard"));
+        s.put("patterns", report.get("patterns"));
         s.put("attention", report.get("attention"));
         s.put("trendDirection", report.get("trendDirection"));
         return s;
