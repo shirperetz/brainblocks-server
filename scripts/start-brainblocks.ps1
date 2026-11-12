@@ -11,7 +11,7 @@ for ($i = 0; $i -lt 30 -and -not (Get-NetTCPConnection -LocalPort 3306 -State Li
 $java = Join-Path $env:JAVA_HOME "bin\java.exe"
 if (-not (Test-Path $java)) { $java = "java" }
 if (Test-Path run\server.log) { Copy-Item run\server.log run\server.prev.log -Force }
-Start-Process -FilePath $java -ArgumentList "-jar", "run\brainblocks.jar" -WorkingDirectory $server `
+Start-Process -FilePath $java -ArgumentList "-jar", "run\brainblocks.jar", "--brainblocks.rooms-file=run/rooms-snapshot.json" -WorkingDirectory $server `
     -RedirectStandardOutput run\server.log -RedirectStandardError run\server-err.log -WindowStyle Hidden
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep 2
