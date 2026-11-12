@@ -213,6 +213,7 @@ public final class ProgressReport {
         c.put("avatar", p.getAvatar());
         c.put("grade", p.getGrade());
         c.put("gradeLocked", p.isGradeLocked());
+        c.put("classId", p.getClassId()); // 2026-11-12: the report's "move to class" card
         c.put("username", p.getUsername());
         c.put("totalPoints", p.getTotalPoints());
         LocalDate today = now.toLocalDate();

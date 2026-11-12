@@ -174,5 +174,24 @@ class WeeklyAssignmentTest {
         assertThat(status("/api/learn/staff/children/" + otherId + "/class", HttpMethod.POST, boss, Map.of("classId", 0))).isEqualTo(200);
         assertThat(call("/api/learn/profiles/" + otherId + "/assignments", HttpMethod.GET, k2, null, List.class)).isEmpty();
         assertThat(call("/api/learn/profiles/" + otherId + "/class-building", HttpMethod.GET, k2, null, Map.class)).isEmpty();
+
+        // 2026-11-12 (Shir: "switching classes - for me and for the teachers"): moving a child.
+        Map<String, Object> dana2 = call("/api/learn/staff/classes", HttpMethod.POST, dana, Map.of("name", "ד׳1", "grade", "G4"), Map.class);
+        Map<String, Object> rinaCls = call("/api/learn/staff/classes", HttpMethod.POST, rina, Map.of("name", "ו׳3"), Map.class);
+        String move = "/api/learn/staff/children/" + kidId + "/class";
+        // The teacher: her child, into her other class -> it gets that class's grade, locked.
+        Map<String, Object> moved = call(move, HttpMethod.POST, dana, Map.of("classId", dana2.get("id")), Map.class);
+        assertThat(moved).containsEntry("grade", "G4").containsEntry("gradeLocked", true);
+        // Not into another teacher's class, not out of every class, not someone else's child, not a child.
+        assertThat(status(move, HttpMethod.POST, dana, Map.of("classId", rinaCls.get("id")))).isEqualTo(403);
+        assertThat(status(move, HttpMethod.POST, dana, Map.of("classId", 0))).isEqualTo(403);
+        assertThat(status(move, HttpMethod.POST, rina, Map.of("classId", rinaCls.get("id")))).isEqualTo(403);
+        assertThat(status(move, HttpMethod.POST, k, Map.of("classId", classId))).isEqualTo(403);
+        // The admin: anywhere - another teacher's class, and out of every class.
+        assertThat(status(move, HttpMethod.POST, boss, Map.of("classId", rinaCls.get("id")))).isEqualTo(200);
+        assertThat(status("/api/learn/staff/children", HttpMethod.GET, rina, null)).isEqualTo(200);
+        assertThat(((List<Map<String, Object>>) call("/api/learn/staff/children", HttpMethod.GET, rina, null, List.class)))
+                .anyMatch(c -> c.get("id").equals(kidId));
+        assertThat(status(move, HttpMethod.POST, boss, Map.of("classId", 0))).isEqualTo(200);
     }
 }

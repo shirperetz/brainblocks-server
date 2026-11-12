@@ -227,19 +227,35 @@ public class StaffController {
         }
     }
 
-    /** Admin only: move a child to a class (classId null/0 = Shir's own). */
+    /**
+     * Move a child to a class (classId null/0 = Shir's own, no class). 2026-11-12 (Shir: "the option to
+     * switch classes - for me as admin and for the teachers"): the admin moves any child anywhere; a
+     * teacher moves only a child of HER classes into another of HER classes (never out of every class).
+     */
     @PostMapping("/children/{id}/class")
     public ProfileResponse moveChild(@PathVariable Long id, @RequestBody Map<String, Object> body,
                                      @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
-        access.requireAdmin(me);
+        LearnerProfile v = access.requireStaff(me);
+        boolean admin = access.role(v) == AccessService.Role.ADMIN;
         LearnerProfile p = profiles.findById(id).filter(x -> !x.isTeacher() && !x.isAdmin())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין ילד כזה"));
+        if (!admin) access.requireCanSee(me, id);
         Object raw = body.get("classId");
         Long classId = raw == null || "0".equals(raw.toString()) ? null : Long.valueOf(raw.toString());
-        if (classId != null && classes.findById(classId).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "אין כיתה כזו");
+        if (classId == null && !admin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "רק המנהלת מוציאה ילד מכל הכיתות");
+        }
+        LearnClass target = classId == null ? null : classes.findById(classId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "אין כיתה כזו"));
+        if (target != null && !admin && !target.getTeacherId().equals(v.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "זו לא כיתה שלך");
         }
         p.setClassId(classId);
+        // A class that practices one grade gives it to the child, locked (as when joining with its code).
+        if (target != null && target.getGrade() != null) {
+            p.setGrade(target.getGrade());
+            p.setGradeLocked(true);
+        }
         profiles.save(p);
         return ProfileResponse.fromEntity(p);
     }
