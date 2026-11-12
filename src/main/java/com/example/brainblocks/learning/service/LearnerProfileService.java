@@ -40,8 +40,19 @@ public class LearnerProfileService {
         return ProfileResponse.fromEntity(findProfile(id));
     }
 
+    static final java.util.Set<String> COMPANIONS = java.util.Set.of("FOX", "PANDA", "PUPPY", "CAT", "OWL", "TURTLE", "NONE");
+
     public ProfileResponse updateProfile(Long id, UpdateProfileRequest request) {
         LearnerProfile profile = findProfile(id);
+        // 2026-11-11: the companion animal on every screen (or NONE) - only known keys.
+        if (request.getCompanion() != null) {
+            String c = request.getCompanion().trim().toUpperCase();
+            if (!COMPANIONS.contains(c)) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid companion: " + request.getCompanion());
+            }
+            profile.setCompanion(c);
+        }
         if (request.getAvatar() != null) {
             profile.setAvatar(parseEnum(Avatar.class, request.getAvatar(), "avatar"));
         }

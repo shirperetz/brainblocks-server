@@ -19,4 +19,10 @@ public class UpdateProfileRequest {
     public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
     public Boolean getSoundEnabled() { return soundEnabled; }
     public void setSoundEnabled(Boolean soundEnabled) { this.soundEnabled = soundEnabled; }
+
+    /** 2026-11-11: FOX / PANDA / PUPPY / CAT / OWL / TURTLE / NONE. */
+    private String companion;
+
+    public String getCompanion() { return companion; }
+    public void setCompanion(String companion) { this.companion = companion; }
 }

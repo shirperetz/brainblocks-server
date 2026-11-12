@@ -179,6 +179,13 @@ public class LearnerProfile {
     public LocalDateTime getTokenUsedAt() { return tokenUsedAt; }
     public void setTokenUsedAt(LocalDateTime tokenUsedAt) { this.tokenUsedAt = tokenUsedAt; }
 
+    /** 2026-11-11: the companion animal the child chose (null = the default fox; "NONE" = hidden). */
+    @Column(length = 12)
+    private String companion;
+
+    public String getCompanion() { return companion; }
+    public void setCompanion(String companion) { this.companion = companion; }
+
     public String getIslandJson() { return islandJson; }
     public void setIslandJson(String islandJson) { this.islandJson = islandJson; }
 }
