@@ -188,6 +188,16 @@ public class LearnerProfile {
     public boolean isGradeLocked() { return Boolean.TRUE.equals(gradeLocked); }
     public void setGradeLocked(boolean locked) { this.gradeLocked = locked; }
 
+    /**
+     * 2026-11-12 (Shir: "children switch grades only if I allow it, in each one's settings" -> then
+     * "don't lock it - let me do it, and the teachers too"): the admin or the child's teacher can stop a
+     * child from changing its own grade. null = allowed (the default, also children from before).
+     */
+    private Boolean gradeChangeAllowed;
+
+    public boolean isGradeChangeAllowed() { return !Boolean.FALSE.equals(gradeChangeAllowed); }
+    public void setGradeChangeAllowed(boolean allowed) { this.gradeChangeAllowed = allowed; }
+
     /** 2026-11-11: the companion animal the child chose (null = the default fox; "NONE" = hidden). */
     @Column(length = 12)
     private String companion;

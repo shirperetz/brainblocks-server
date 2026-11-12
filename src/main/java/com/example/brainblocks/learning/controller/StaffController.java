@@ -218,6 +218,11 @@ public class StaffController {
         LearnerProfile p = profiles.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין ילד כזה"));
         if (body.get("grade") != null) p.setGrade(grade(body.get("grade")));
         if (body.get("locked") != null) p.setGradeLocked(Boolean.parseBoolean(body.get("locked").toString()));
+        // 2026-11-12 (Shir): may the child change its own grade - the admin or the child's teacher
+        // (staffOver above already checked this child is hers).
+        if (body.get("changeAllowed") != null) {
+            p.setGradeChangeAllowed(Boolean.parseBoolean(body.get("changeAllowed").toString()));
+        }
         profiles.save(p);
         return ProfileResponse.fromEntity(p);
     }

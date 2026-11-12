@@ -41,7 +41,7 @@ public class ProfileResponse {
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
         ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved())
                 .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion())
-                .withGradeLocked(p.isGradeLocked());
+                .withGradeLocked(p.isGradeLocked()).withGradeChangeAllowed(p.isGradeChangeAllowed());
     }
 
     /** 2026-11-12: the grade was set by the admin/teacher - the child can't change it. */
@@ -53,6 +53,16 @@ public class ProfileResponse {
     }
 
     public boolean isGradeLocked() { return gradeLocked; }
+
+    /** 2026-11-12: the admin allowed this child to change its own grade (otherwise it can't). */
+    private boolean gradeChangeAllowed;
+
+    private ProfileResponse withGradeChangeAllowed(boolean allowed) {
+        this.gradeChangeAllowed = allowed;
+        return this;
+    }
+
+    public boolean isGradeChangeAllowed() { return gradeChangeAllowed; }
 
     /** 2026-11-11: the companion animal (null = default). */
     private String companion;

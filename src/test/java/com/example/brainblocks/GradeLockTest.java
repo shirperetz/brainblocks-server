@@ -84,7 +84,13 @@ class GradeLockTest {
         assertThat(status("/api/learn/staff/children/" + kidId + "/grade", HttpMethod.POST, boss, Map.of("grade", "G2", "locked", true))).isEqualTo(200);
         assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=FRACTIONS&stage=1", HttpMethod.GET, k, null)).isEqualTo(403);
         assertThat(status("/api/learn/staff/children/" + kidId + "/grade", HttpMethod.POST, boss, Map.of("locked", false))).isEqualTo(200);
+        // 2026-11-12 (Shir): by default the child may change grade; the admin/teacher can turn that off.
         assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("grade", "G4"))).isEqualTo(200);
+        assertThat(status("/api/learn/staff/children/" + kidId + "/grade", HttpMethod.POST, boss, Map.of("changeAllowed", false))).isEqualTo(200);
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("grade", "G3"))).isEqualTo(403);
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("grade", "G4"))).isEqualTo(200); // same grade: fine
+        assertThat(status("/api/learn/staff/children/" + kidId + "/grade", HttpMethod.POST, boss, Map.of("changeAllowed", true))).isEqualTo(200);
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("grade", "G3"))).isEqualTo(200);
 
         // A child can't lock or set itself through the staff path.
         assertThat(status("/api/learn/staff/children/" + kidId + "/grade", HttpMethod.POST, k, Map.of("grade", "G6"))).isEqualTo(403);

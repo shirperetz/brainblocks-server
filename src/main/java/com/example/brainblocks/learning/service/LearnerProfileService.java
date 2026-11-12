@@ -63,6 +63,13 @@ public class LearnerProfileService {
                 throw new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.FORBIDDEN, "המורה קבעה את הכיתה שלך");
             }
+            // 2026-11-12 (Shir): a child changes its grade only with the admin's permission. The first
+            // choice (no grade yet) is free; staff (admin/teacher) are not limited.
+            boolean staff = profile.isAdmin() || profile.isTeacher();
+            if (!staff && profile.getGrade() != null && g != profile.getGrade() && !profile.isGradeChangeAllowed()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, "המורה סגרה את החלפת הכיתה");
+            }
             profile.setGrade(g);
         }
         if (request.getDifficulty() != null) {
