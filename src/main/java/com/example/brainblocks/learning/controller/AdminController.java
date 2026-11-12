@@ -69,6 +69,7 @@ public class AdminController {
                     m.put("lastActiveAt", p.getLastActiveAt());
                     m.put("createdAt", p.getCreatedAt());
                     m.put("admin", p.isAdmin());
+                    m.put("teacher", p.isTeacher()); // 2026-11-12: a teacher's sign-up shows as one
                     m.put("disabled", p.isDisabled());
                     m.put("approved", p.isApproved());
                     m.put("sessions", sessions.findByProfileId(p.getId()).size());
