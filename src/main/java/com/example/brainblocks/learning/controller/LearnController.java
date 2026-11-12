@@ -267,6 +267,20 @@ public class LearnController {
                 "openMistakes", open, "totalPoints", p.getTotalPoints());
     }
 
+    /** 2026-11-12 (idea #5): the weekly tasks the child's teacher set for its class, with its progress. */
+    private com.example.brainblocks.learning.service.AssignmentService assignmentService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setAssignmentService(com.example.brainblocks.learning.service.AssignmentService s) {
+        this.assignmentService = s;
+    }
+
+    @GetMapping("/profiles/{id}/assignments")
+    public List<Map<String, Object>> assignments(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
+        return assignmentService.forChild(profileService.findProfile(id));
+    }
+
     private Topic parseTopic(String value) {
         try {
             return Topic.valueOf(value.trim().toUpperCase());

@@ -306,6 +306,36 @@ public class StaffController {
         return Map.of("code", accounts.changeTeacherCode(body.get("code")));
     }
 
+    // ---- weekly tasks (idea #5, 2026-11-12) ----
+
+    private com.example.brainblocks.learning.service.AssignmentService assignments;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setAssignments(com.example.brainblocks.learning.service.AssignmentService assignments) {
+        this.assignments = assignments;
+    }
+
+    /** The class's tasks with each child's progress (the class's teacher or the admin). */
+    @GetMapping("/classes/{id}/assignments")
+    public List<Map<String, Object>> classAssignments(@PathVariable Long id,
+                                                      @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return assignments.forClass(me, id);
+    }
+
+    /** body: { topic: "FRACTIONS", rounds: 3, days: 7 } */
+    @PostMapping("/classes/{id}/assignments")
+    public Map<String, Object> createAssignment(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                                @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        var a = assignments.create(me, id, body.get("topic"), body.get("rounds"), body.get("days"));
+        return Map.of("id", a.getId(), "topic", a.getTopic(), "rounds", a.getRounds(), "endDate", a.getEndDate().toString());
+    }
+
+    @PostMapping("/assignments/{id}/cancel")
+    public Map<String, Object> cancelAssignment(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        assignments.cancel(me, id);
+        return Map.of("cancelled", true);
+    }
+
     /** Which of my classes a list of ids belongs to - unused ids are simply not mine. */
     Set<Long> myClassIds(Long me) {
         return access.classIdsOf(access.requireStaff(me));
