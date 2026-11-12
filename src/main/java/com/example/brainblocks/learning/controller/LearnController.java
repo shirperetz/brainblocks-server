@@ -76,6 +76,14 @@ public class LearnController {
         this.sessionRepository = sessionRepository;
     }
 
+    /** 2026-11-12: the child's recent answers set the difficulty per topic (AdaptiveDifficulty). */
+    private com.example.brainblocks.learning.repository.LearnerAnswerRepository answerRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setAnswerRepository(com.example.brainblocks.learning.repository.LearnerAnswerRepository answers) {
+        this.answerRepository = answers;
+    }
+
     // ---- Profiles ----------------------------------------------------------
 
     // 2026-11-11: children's accounts - a profile is created only with a username + password
@@ -150,8 +158,10 @@ public class LearnController {
         if (profile.isGradeLocked() && !com.example.brainblocks.learning.service.GradeTopics.allowed(t, profile.getGrade())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
         }
-        return questionService.generate(t, profile.getGrade(),
-                profile.getDifficulty(), stage, clamped);
+        // 2026-11-12 (idea #3): one level harder after >=90% right in this topic, easier after <=50%.
+        var difficulty = com.example.brainblocks.learning.service.AdaptiveDifficulty.forTopic(
+                profile.getDifficulty(), t, answerRepository.findByProfileId(profileId));
+        return questionService.generate(t, profile.getGrade(), difficulty, stage, clamped);
     }
 
     @GetMapping("/profiles/{id}/map")
