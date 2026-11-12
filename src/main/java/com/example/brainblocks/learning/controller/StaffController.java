@@ -133,6 +133,39 @@ public class StaffController {
         return Map.of("id", c.getId(), "name", c.getName(), "joinCode", c.getJoinCode(), "closed", c.isClosed());
     }
 
+    /**
+     * 2026-11-12 (Shir: "possible to delete if needed, and it won't be seen"): the class disappears - its
+     * code stops working, its weekly tasks go with it. The children are NOT deleted: they stay, with
+     * "no class" (and a grade the class had locked is unlocked). Only the class's teacher or the admin.
+     */
+    @org.springframework.web.bind.annotation.DeleteMapping("/classes/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public Map<String, Object> deleteClass(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        LearnerProfile v = access.requireStaff(me);
+        LearnClass c = ownClass(v, id);
+        int moved = 0;
+        for (LearnerProfile p : profiles.findAll()) {
+            if (c.getId().equals(p.getClassId())) {
+                p.setClassId(null);
+                if (c.getGrade() != null && !p.isTeacher() && !p.isAdmin()) p.setGradeLocked(false);
+                profiles.save(p);
+                moved++;
+            }
+        }
+        if (assignmentRepository != null) {
+            assignmentRepository.deleteAll(assignmentRepository.findByClassIdOrderByStartDateDescIdDesc(c.getId()));
+        }
+        classes.delete(c);
+        return Map.of("deleted", true, "childrenMoved", moved);
+    }
+
+    private com.example.brainblocks.learning.repository.LearnAssignmentRepository assignmentRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAssignmentRepository(com.example.brainblocks.learning.repository.LearnAssignmentRepository r) {
+        this.assignmentRepository = r;
+    }
+
     private LearnClass ownClass(LearnerProfile v, Long id) {
         LearnClass c = classes.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין כיתה כזו"));
         if (access.role(v) != AccessService.Role.ADMIN && !c.getTeacherId().equals(v.getId())) {

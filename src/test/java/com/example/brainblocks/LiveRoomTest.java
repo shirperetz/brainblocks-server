@@ -195,5 +195,16 @@ class LiveRoomTest {
         assertThat(call("/api/learn/rooms/" + room.get("id") + "/end", HttpMethod.POST, as(dana), null)).containsEntry("state", "ENDED");
         assertThat(status("/api/learn/rooms/code/" + code + "/question", HttpMethod.GET, as(k), null)).isEqualTo(409);
         assertThat(call("/api/learn/rooms/code/" + code + "/me", HttpMethod.GET, as(k), null)).containsEntry("state", "ENDED").containsEntry("points", kidPoints);
+
+        // 2026-11-12 (Shir: "possible to delete, and it won't be seen"): a class is deleted; its children stay.
+        assertThat(status("/api/learn/staff/classes/" + cls.get("id"), HttpMethod.DELETE, as(rina), null)).isEqualTo(403);
+        assertThat(status("/api/learn/staff/classes/" + cls.get("id"), HttpMethod.DELETE, as(k), null)).isEqualTo(403);
+        assertThat(call("/api/learn/staff/classes/" + cls.get("id"), HttpMethod.DELETE, as(dana), null))
+                .containsEntry("deleted", true).containsEntry("childrenMoved", 1);
+        List<Map<String, Object>> left = (List<Map<String, Object>>) call("/api/learn/staff/me", HttpMethod.GET, as(dana), null).get("classes");
+        assertThat(left).extracting(c -> c.get("id")).doesNotContain(cls.get("id"));
+        Map<String, Object> kidNow = call("/api/learn/profiles/" + kidId, HttpMethod.GET, as(k), null);
+        assertThat(kidNow.get("classId")).isNull();
+        assertThat(status("/api/learn/staff/classes/" + cls.get("id"), HttpMethod.DELETE, as(dana), null)).isEqualTo(404);
     }
 }
