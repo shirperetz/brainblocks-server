@@ -127,7 +127,10 @@ public class PublicAccessConfig implements WebMvcConfigurer {
     FilterRegistrationBean<OncePerRequestFilter> publicLimits() {
         Limiter register = new Limiter(5, 60 * MINUTE);   // new children per address per hour
         Limiter login = new Limiter(20, 10 * MINUTE);     // log-in tries per address
-        Limiter ai = new Limiter(20, MINUTE);              // "לא הבנתי" / speech (local AI) per address
+        Limiter ai = new Limiter(20, MINUTE);              // "לא הבנתי" (local AI) per address
+        // 2026-11-12: 🔊 reading every question aloud - a whole class behind one school address would pass
+        // 20/min at once; repeats come from SpeechService's memory, so it gets its own, bigger allowance.
+        Limiter speech = new Limiter(120, MINUTE);
         Limiter all = new Limiter(600, MINUTE);            // every /api call per address
         Clock clock = Clock.systemUTC();
         OncePerRequestFilter filter = new OncePerRequestFilter() {
@@ -141,7 +144,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                     long now = clock.millis();
                     if (now - lastCleanup > 10 * MINUTE) {
                         lastCleanup = now;
-                        for (Limiter l : new Limiter[] {register, login, ai, all}) {
+                        for (Limiter l : new Limiter[] {register, login, ai, speech, all}) {
                             l.cleanup(now);
                         }
                     }
@@ -154,7 +157,8 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                     boolean ok = all.allow(who, now)
                             && (!post || !path.equals("/api/learn/auth/register") || register.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/login") || login.allow(who, now))
-                            && (!post || !(path.equals("/api/learn/help") || path.equals("/api/learn/speak")) || ai.allow(who, now));
+                            && (!post || !path.equals("/api/learn/help") || ai.allow(who, now))
+                            && (!post || !path.equals("/api/learn/speak") || speech.allow(who, now));
                     if (!ok) {
                         res.setStatus(429);
                         res.setContentType("application/json;charset=UTF-8");

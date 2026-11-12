@@ -27,7 +27,27 @@ public class SpeechService {
     /** WAV bytes, or null when no speech is available. */
     public byte[] speak(String text) {
         if (url == null || url.isBlank() || text == null || text.isBlank()) return null;
-        String t = text.length() > 400 ? text.substring(0, 400) : text;
+        // 2026-11-12: the voice skips digits - "38 + 27" is read as words (SpokenMath).
+        String spoken = com.example.brainblocks.learning.service.SpokenMath.toSpeech(text);
+        String t = spoken.length() > 400 ? spoken.substring(0, 400) : spoken;
+        // The same question is read again and again (every child, every round) - kept in memory.
+        byte[] cached = recent.get(t);
+        if (cached != null) return cached;
+        byte[] wav = synthesize(t);
+        if (wav != null) recent.put(t, wav);
+        return wav;
+    }
+
+    /** The last 300 texts read aloud (about 30 MB at most). */
+    private final java.util.Map<String, byte[]> recent = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<String, byte[]> e) {
+                    return size() > 300;
+                }
+            });
+
+    private byte[] synthesize(String t) {
         try {
             HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(30))
