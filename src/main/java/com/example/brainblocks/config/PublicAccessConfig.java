@@ -156,14 +156,14 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                     }
                     boolean post = "POST".equals(req.getMethod());
                     String who = visitor(req, trustForwarded);
-                    if (post && path.equals("/api/learn/auth/register")) {
+                    if (post && path.startsWith("/api/learn/auth/register")) { // children and (2026-11-12) teachers
                         // who tried to sign up, and from where (Shir: "nobody gets in without me knowing")
                         org.slf4j.LoggerFactory.getLogger("brainblocks.signup").info("sign-up attempt from {}", who);
                     }
                     boolean inRoom = path.startsWith("/api/learn/rooms/") || path.startsWith("/api/learn/room-guest/");
                     boolean ok = (inRoom ? room.allow(who, now) : all.allow(who, now))
                             && (!post || !path.equals("/api/learn/room-guest/join") || guestJoin.allow(who, now))
-                            && (!post || !path.equals("/api/learn/auth/register") || register.allow(who, now))
+                            && (!post || !path.startsWith("/api/learn/auth/register") || register.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/login") || login.allow(who, now))
                             && (!post || !path.equals("/api/learn/help") || ai.allow(who, now))
                             && (!post || !path.equals("/api/learn/speak") || speech.allow(who, now));

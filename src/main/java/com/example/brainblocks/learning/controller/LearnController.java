@@ -97,6 +97,13 @@ public class LearnController {
                 body.get("avatar"), body.get("grade"), body.get("difficulty"));
     }
 
+    /** 2026-11-12: "מורה" at sign-up - no code, waits for Shir's approval. body: { username, password, name } */
+    @PostMapping("/auth/register-teacher")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AccountService.Session registerTeacher(@RequestBody Map<String, String> body) {
+        return accountService.registerTeacher(body.get("username"), body.get("password"), body.get("name"));
+    }
+
     @PostMapping("/auth/login")
     public AccountService.Session login(@RequestBody Map<String, String> body) {
         return accountService.login(body.get("username"), body.get("password"), java.time.Instant.now());

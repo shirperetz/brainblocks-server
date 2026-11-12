@@ -201,7 +201,10 @@ public class StaffController {
     public ProfileResponse password(@PathVariable Long id, @RequestBody Map<String, String> body,
                                     @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         staffOver(me, id);
-        return accounts.setCredentials(id, body.get("username"), body.get("password"));
+        // 2026-11-12 (Shir: a teacher gets "a new password for a child" - not more): a teacher changes only
+        // the password of her own child; a new username is the admin's.
+        boolean admin = access.role(access.requireStaff(me)) == AccessService.Role.ADMIN;
+        return accounts.setCredentials(id, admin ? body.get("username") : null, body.get("password"));
     }
 
     /**

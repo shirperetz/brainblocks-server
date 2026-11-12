@@ -222,6 +222,19 @@ public class AccountService {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "קוד ההצטרפות לא נכון. בקשו אותו מההורים או מהמורה");
     }
 
+    /**
+     * 2026-11-12 (Shir: "it asks child or teacher; a teacher signs up with a username and password and I
+     * approve her"): a teacher signs up with no code at all - she waits for Shir's OK like everyone new,
+     * and sees nothing until then.
+     */
+    public Session registerTeacher(String username, String password, String name) {
+        Session s = register(username, password, name, "ROBOT", null, null);
+        LearnerProfile p = profileService.findProfile(s.profile().getId());
+        p.setTeacher(true);
+        repository.save(p);
+        return new Session(s.token(), ProfileResponse.fromEntity(p));
+    }
+
     private static boolean sameCode(String expected, String given) {
         return expected != null && !expected.isEmpty() && given != null
                 && MessageDigest.isEqual(expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
