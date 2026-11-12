@@ -136,7 +136,7 @@ public class LearningQuestionService {
             case GEOMETRY -> fractionGeometry.geometry(id, stage, true);
             case ANGLES, ANGLE_CALC, PERIMETER, AREA -> fractionGeometry.geometryTrack(id, topic, stage, true, grade);
             // Island games build their own rounds in the client; a plain addition question is a safe fallback.
-            case DRAGON, BALLOONS, BRIDGE, TRAIN -> addition(id, grade, diff, stage);
+            case DRAGON, BALLOONS, BRIDGE, TRAIN, CLOCK, SHOP, COINS -> addition(id, grade, diff, stage);
         };
     }
 

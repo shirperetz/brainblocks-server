@@ -105,6 +105,12 @@ public final class Skills {
         NAMES.put("ISL_MAKE_10", "משלימים לעשר");
         NAMES.put("ISL_MAKE_20", "משלימים לעשרים");
         NAMES.put("ISL_ORDER", "סדר המספרים");
+        NAMES.put("ISL_CLOCK_HOUR", "שעון - שעות שלמות");
+        NAMES.put("ISL_CLOCK_HALF", "שעון - חצאים ורבעים");
+        NAMES.put("ISL_CLOCK_MIN", "שעון - דקות");
+        NAMES.put("ISL_PAY", "לשלם בדיוק");
+        NAMES.put("ISL_COUNT_MONEY", "לספור כסף");
+        NAMES.put("ISL_CHANGE", "עודף");
         NAMES.put("OTHER", "אחר");
     }
 
@@ -144,6 +150,12 @@ public final class Skills {
                 return stage >= 5 ? "ISL_MAKE_20" : "ISL_MAKE_10";
             case TRAIN:
                 return "ISL_ORDER";
+            case CLOCK:
+                return stage <= 2 ? "ISL_CLOCK_HOUR" : stage <= 5 ? "ISL_CLOCK_HALF" : "ISL_CLOCK_MIN";
+            case SHOP:
+                return "ISL_PAY";
+            case COINS:
+                return stage == 6 ? "ISL_CHANGE" : "ISL_COUNT_MONEY";
             default:
                 break;
         }

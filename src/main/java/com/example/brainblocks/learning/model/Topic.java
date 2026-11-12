@@ -22,10 +22,15 @@ public enum Topic {
     DRAGON,
     BALLOONS,
     BRIDGE,
-    TRAIN;
+    TRAIN,
+    // 2026-11-12 (Shir: "more islands for grades 1-3"): 🕐 the clock-and-money island.
+    CLOCK,
+    SHOP,
+    COINS;
 
     /** True for the island mini-games, whose questions are generated client-side. */
     public boolean isGame() {
-        return this == DRAGON || this == BALLOONS || this == BRIDGE || this == TRAIN;
+        return this == DRAGON || this == BALLOONS || this == BRIDGE || this == TRAIN
+                || this == CLOCK || this == SHOP || this == COINS;
     }
 }
