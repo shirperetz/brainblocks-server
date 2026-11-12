@@ -60,6 +60,8 @@ public class AssignmentService {
      */
     static boolean counts(LearnerSession s, LearnAssignment a) {
         if (s.getMode() != SessionMode.STAGE || s.getTopic() != a.getTopic() || s.getCreatedAt() == null) return false;
+        // Only rounds played after the teacher set it (the bot found: this morning's rounds finished it at once).
+        if (a.getCreatedAt() != null && s.getCreatedAt().isBefore(a.getCreatedAt())) return false;
         LocalDate d = s.getCreatedAt().toLocalDate();
         if (d.isBefore(a.getStartDate()) || d.isAfter(a.getEndDate())) return false;
         return s.getTotalQuestions() > 0 && s.getCorrectCount() * 2 >= s.getTotalQuestions();

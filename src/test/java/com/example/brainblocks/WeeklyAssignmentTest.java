@@ -100,6 +100,9 @@ class WeeklyAssignmentTest {
         assertThat(status(base, HttpMethod.GET, k, null)).isEqualTo(403);
         assertThat(status(base, HttpMethod.POST, k, Map.of("topic", "FRACTIONS"))).isEqualTo(403);
 
+        // A good fractions round this morning, before the task exists - must not count (the bot found it did).
+        assertThat(round(k, kidId, "FRACTIONS", "STAGE", 10)).isEqualTo(200);
+
         // Dana: 3 rounds of fractions this week.
         Map<String, Object> task = call(base, HttpMethod.POST, dana, Map.of("topic", "FRACTIONS", "rounds", 3), Map.class);
         assertThat(task.get("rounds")).isEqualTo(3);
