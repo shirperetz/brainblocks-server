@@ -560,6 +560,166 @@ public class LiveRoomService {
         rooms.values().removeIf(r -> now - r.createdAt > KEEP_MS);
     }
 
+    // ---- 2026-11-12: rooms survive a server restart ----
+    // (Shir's sister typed the code of a room that a deploy had just wiped.) Every 2 seconds, if anything
+    // changed, the rooms are written to a small JSON file; on start they are read back. Kept: the room,
+    // its players (approved / points / answered / right / what they already saw), the skills table. Not
+    // kept: the question on screen at that moment - the child just gets a new one. Off when no file is set
+    // (tests); the run script sets brainblocks.rooms-file.
+
+    private java.nio.file.Path snapshotFile;
+    private final com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+    private String lastSnapshot = "";
+    private java.util.concurrent.ScheduledExecutorService saver;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setSnapshotFile(@org.springframework.beans.factory.annotation.Value("${brainblocks.rooms-file:}") String file) {
+        this.snapshotFile = file == null || file.isBlank() ? null : java.nio.file.Path.of(file);
+    }
+
+    @jakarta.annotation.PostConstruct
+    void restoreAndStartSaving() {
+        if (snapshotFile == null) return;
+        restore();
+        saver = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "rooms-snapshot");
+            t.setDaemon(true);
+            return t;
+        });
+        saver.scheduleWithFixedDelay(this::saveIfChanged, 2, 2, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    @jakarta.annotation.PreDestroy
+    void saveOnStop() {
+        if (saver != null) saver.shutdownNow();
+        saveIfChanged();
+    }
+
+    synchronized void saveIfChanged() {
+        if (snapshotFile == null) return;
+        try {
+            cleanup();
+            String now = json.writeValueAsString(snapshot());
+            if (now.equals(lastSnapshot)) return;
+            java.nio.file.Path tmp = snapshotFile.resolveSibling(snapshotFile.getFileName() + ".tmp");
+            java.nio.file.Files.writeString(tmp, now);
+            java.nio.file.Files.move(tmp, snapshotFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            lastSnapshot = now;
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(LiveRoomService.class).warn("rooms snapshot not saved: {}", e.getMessage());
+        }
+    }
+
+    private List<Map<String, Object>> snapshot() {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Room r : rooms.values()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", r.id);
+            m.put("code", r.code);
+            m.put("teacherId", r.teacherId);
+            m.put("classId", r.classId);
+            m.put("title", r.title);
+            m.put("grade", r.grade == null ? null : r.grade.name());
+            m.put("topics", r.topics);
+            m.put("durationMs", r.durationMs);
+            m.put("state", r.state.name());
+            m.put("endsAt", r.endsAt);
+            m.put("createdAt", r.createdAt);
+            m.put("nextPlayer", r.nextPlayer);
+            m.put("skills", r.skills);
+            List<Map<String, Object>> ps = new ArrayList<>();
+            for (Player p : r.players.values()) {
+                Map<String, Object> pm = new LinkedHashMap<>();
+                pm.put("id", p.id);
+                pm.put("profileId", p.profileId);
+                pm.put("name", p.name);
+                pm.put("avatar", p.avatar);
+                pm.put("guestToken", p.guestToken);
+                pm.put("grade", p.grade == null ? null : p.grade.name());
+                pm.put("approved", p.approved);
+                pm.put("rejected", p.rejected);
+                pm.put("points", p.points);
+                pm.put("answered", p.answered);
+                pm.put("right", p.right);
+                pm.put("streak", p.streak);
+                pm.put("lastActiveMs", p.lastActiveMs);
+                pm.put("seen", new ArrayList<>(p.seen));
+                ps.add(pm);
+            }
+            m.put("players", ps);
+            out.add(m);
+        }
+        out.sort(Comparator.comparingLong(m -> (Long) m.get("id")));
+        return out;
+    }
+
+    synchronized void restore() {
+        try {
+            if (snapshotFile == null || !java.nio.file.Files.isRegularFile(snapshotFile)) return;
+            com.fasterxml.jackson.databind.JsonNode all = json.readTree(java.nio.file.Files.readString(snapshotFile));
+            long now = clock.getAsLong();
+            for (com.fasterxml.jackson.databind.JsonNode m : all) {
+                if (now - m.path("createdAt").asLong() > KEEP_MS) continue;
+                List<String> topics = new ArrayList<>();
+                m.path("topics").forEach(t -> topics.add(t.asText()));
+                Room r = new Room(m.path("id").asLong(), m.path("code").asText(), nullableLong(m, "teacherId"),
+                        nullableLong(m, "classId"), m.path("title").asText(), grade(m.path("grade")), List.copyOf(topics),
+                        m.path("durationMs").asLong(), m.path("createdAt").asLong());
+                r.state = State.valueOf(m.path("state").asText("LOBBY"));
+                r.endsAt = m.path("endsAt").asLong();
+                r.nextPlayer = m.path("nextPlayer").asLong(1);
+                m.path("skills").fields().forEachRemaining(e ->
+                        r.skills.put(e.getKey(), new int[] {e.getValue().path(0).asInt(), e.getValue().path(1).asInt()}));
+                for (com.fasterxml.jackson.databind.JsonNode pm : m.path("players")) {
+                    Player p = new Player(pm.path("id").asLong(), nullableLong(pm, "profileId"), pm.path("name").asText(),
+                            pm.path("avatar").isNull() ? null : pm.path("avatar").asText(null),
+                            pm.path("guestToken").isNull() ? null : pm.path("guestToken").asText(null), grade(pm.path("grade")));
+                    p.approved = pm.path("approved").asBoolean();
+                    p.rejected = pm.path("rejected").asBoolean();
+                    p.points = pm.path("points").asInt();
+                    p.answered = pm.path("answered").asInt();
+                    p.right = pm.path("right").asInt();
+                    p.streak = pm.path("streak").asInt();
+                    p.lastActiveMs = pm.path("lastActiveMs").asLong();
+                    pm.path("seen").forEach(s -> p.seen.add(s.asText()));
+                    r.players.put(p.id, p);
+                }
+                rooms.put(r.id, r);
+                nextRoom = Math.max(nextRoom, r.id + 1);
+            }
+            lastSnapshot = json.writeValueAsString(snapshot());
+            org.slf4j.LoggerFactory.getLogger(LiveRoomService.class).info("rooms restored after restart: {}", rooms.size());
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(LiveRoomService.class).warn("rooms snapshot not read: {}", e.getMessage());
+        }
+    }
+
+    private static Long nullableLong(com.fasterxml.jackson.databind.JsonNode n, String field) {
+        return n.path(field).isNumber() ? n.path(field).asLong() : null;
+    }
+
+    private static Grade grade(com.fasterxml.jackson.databind.JsonNode n) {
+        try {
+            return n.isTextual() ? Grade.valueOf(n.asText()) : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /** Tests: the snapshot file, and a second service reading it back as a restart would. */
+    void useSnapshotFile(java.nio.file.Path file) {
+        this.snapshotFile = file;
+    }
+
+    void putForTest(Room r) {
+        rooms.put(r.id, r);
+    }
+
+    Room roomForTest(String code) {
+        return byCodeOrNull(code);
+    }
+
     private static List<String> wrongs(TeacherQuestion q) {
         List<String> w = new ArrayList<>();
         for (String s : new String[] {q.getWrong1(), q.getWrong2(), q.getWrong3()}) if (s != null && !s.isBlank()) w.add(s);
