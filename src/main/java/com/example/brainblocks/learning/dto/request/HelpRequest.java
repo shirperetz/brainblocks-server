@@ -9,6 +9,10 @@ public class HelpRequest {
     private boolean again;
     private Integer attempt;
     private String fallbackHint;
+    /** 2026-11-12: the bank row - the server fills the right answer itself (the phone doesn't have it). */
+    private Long bankId;
+    public Long getBankId() { return bankId; }
+    public void setBankId(Long v) { this.bankId = v; }
 
     public String getQuestionText() { return questionText; }
     public void setQuestionText(String v) { this.questionText = v; }

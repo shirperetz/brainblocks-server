@@ -50,4 +50,22 @@ public class QuestionResponse {
         this.skill = skill;
         return this;
     }
+
+    /**
+     * 2026-11-12: the question's row in the bank (learn_question). The client answers by it, and the
+     * server checks - with {@link #withoutAnswer()} the right answer isn't sent at all.
+     */
+    private Long bankId;
+
+    public Long getBankId() { return bankId; }
+
+    public QuestionResponse withBankId(Long bankId) {
+        this.bankId = bankId;
+        return this;
+    }
+
+    /** The same question with correctIndex -1 and no explanation (it may give the answer away). */
+    public QuestionResponse withoutAnswer() {
+        return new QuestionResponse(id, topic, text, options, -1, hint, null, visual).withSkill(skill).withBankId(bankId);
+    }
 }

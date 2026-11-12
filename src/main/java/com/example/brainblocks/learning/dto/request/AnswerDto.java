@@ -34,5 +34,10 @@ public class AnswerDto {
     private String skill;
 
     public String getSkill() { return skill; }
+
+    /** 2026-11-12: the question's bank row - when present, the SERVER decides right/wrong from it. */
+    private Long bankId;
+    public Long getBankId() { return bankId; }
+    public void setBankId(Long bankId) { this.bankId = bankId; }
     public void setSkill(String skill) { this.skill = skill; }
 }

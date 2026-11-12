@@ -151,11 +151,15 @@ public class LearnController {
     // ---- Gameplay ----------------------------------------------------------
 
     /** Generates a batch of questions for a stage, scaled by the profile's grade + difficulty. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.brainblocks.learning.repository.LearnQuestionRepository bank;
+
     @GetMapping("/questions")
     public List<QuestionResponse> getQuestions(@RequestParam Long profileId,
                                                @RequestParam String topic,
                                                @RequestParam(defaultValue = "1") int stage,
                                                @RequestParam(defaultValue = "10") int count,
+                                               @RequestParam(defaultValue = "false") boolean secure,
                                                @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         own(profileId, me);
         LearnerProfile profile = profileService.findProfile(profileId);
@@ -176,7 +180,40 @@ public class LearnController {
                 .limit(200)
                 .map(a -> com.example.brainblocks.learning.service.LearningQuestionService.key(a.getQuestionText(), a.getCorrectAnswer()))
                 .collect(java.util.stream.Collectors.toSet());
-        return questionService.generateFresh(t, profile.getGrade(), difficulty, stage, clamped, recentRight);
+        List<QuestionResponse> fresh = questionService.generateFresh(t, profile.getGrade(), difficulty, stage, clamped, recentRight);
+        // 2026-11-12 (Shir: "the exercises are saved in a bank, new ones every time"): every question
+        // served is kept, so the server can check the answer itself and the history is complete.
+        // secure=true (the new screens): the right answer is not sent - it's checked by /answer.
+        String grade = profile.getGrade() == null ? null : profile.getGrade().name();
+        List<QuestionResponse> out = new java.util.ArrayList<>(fresh.size());
+        for (QuestionResponse q : fresh) {
+            var row = bank.save(new com.example.brainblocks.learning.model.LearnQuestion(profileId,
+                    (q.getTopic() != null ? q.getTopic() : t).name(), stage, grade, q.getText(), q.getOptions(),
+                    q.getOptions().get(q.getCorrectIndex()), q.getSkill(), q.getExplanation()));
+            q.withBankId(row.getId());
+            out.add(secure ? q.withoutAnswer() : q);
+        }
+        return out;
+    }
+
+    /**
+     * 2026-11-12: answer one bank question. The server checks it (first answer recorded, a retry is
+     * checked too but doesn't overwrite) and only now reveals the right answer and the explanation.
+     * body { answer: "the option text" }.
+     */
+    @PostMapping("/questions/{bankId}/answer")
+    public Map<String, Object> answerQuestion(@PathVariable Long bankId, @RequestBody Map<String, String> body,
+                                              @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        var q = bank.findById(bankId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין שאלה כזאת"));
+        own(q.getProfileId(), me);
+        boolean right = q.answer(body.get("answer"));
+        bank.save(q);
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("correct", right);
+        out.put("correctAnswer", q.getCorrectAnswer());
+        out.put("correctIndex", q.optionList().indexOf(q.getCorrectAnswer()));
+        out.put("explanation", q.getExplanation() == null ? "" : q.getExplanation());
+        return out;
     }
 
     @GetMapping("/profiles/{id}/map")
@@ -202,7 +239,15 @@ public class LearnController {
 
     /** A short explanation of one question from the local AI, or the game's own hint. Never the answer. */
     @PostMapping("/help")
-    public Map<String, String> help(@RequestBody HelpRequest r) {
+    public Map<String, String> help(@RequestBody HelpRequest r,
+                                    @RequestAttribute(value = LearnerAuthConfig.ATTRIBUTE, required = false) Long me) {
+        // 2026-11-12: the phone no longer has the right answer - take it from the bank (own questions only).
+        if (r.getBankId() != null && me != null) {
+            bank.findById(r.getBankId()).filter(q -> q.getProfileId().equals(me)).ifPresent(q -> {
+                r.setCorrectAnswer(q.getCorrectAnswer());
+                if (r.getQuestionText() == null) r.setQuestionText(q.getText());
+            });
+        }
         int attempt = r.getAttempt() != null ? r.getAttempt() : r.isAgain() ? 1 : 0;
         HelpService.Help h = helpService.explain(r.getQuestionText(), r.getCorrectAnswer(), r.getChosenAnswer(),
                 r.getGrade(), attempt, r.getFallbackHint());

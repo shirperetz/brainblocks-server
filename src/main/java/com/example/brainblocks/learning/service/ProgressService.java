@@ -84,6 +84,9 @@ public class ProgressService {
         return new MapResponse(topic.name(), stages, totalStars);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.brainblocks.learning.repository.LearnQuestionRepository bank;
+
     @Transactional
     public SessionSummaryResponse submitSession(SubmitSessionRequest request) {
         if (request.getProfileId() == null) {
@@ -92,6 +95,23 @@ public class ProgressService {
         List<AnswerDto> answers = request.getAnswers();
         if (answers == null || answers.isEmpty()) {
             throw new ResponseStatusException(BAD_REQUEST, "answers are required");
+        }
+
+        // 2026-11-12 (Shir: check answers on the server): an answer that names its bank question is
+        // judged from the bank - what the phone says about "right" is ignored. Only the child's own rows.
+        if (bank != null) {
+            for (AnswerDto a : answers) {
+                if (a.getBankId() == null) continue;
+                bank.findById(a.getBankId())
+                        .filter(q -> q.getProfileId().equals(request.getProfileId()))
+                        .ifPresent(q -> {
+                            String chosen = q.getChosenAnswer() != null ? q.getChosenAnswer() : a.getChosenAnswer();
+                            a.setChosenAnswer(chosen);
+                            a.setCorrectAnswer(q.getCorrectAnswer());
+                            a.setCorrect(q.getCorrectAnswer().equals(chosen));
+                            if (a.getQuestionText() == null) a.setQuestionText(q.getText());
+                        });
+            }
         }
 
         LearnerProfile profile = profileService.findProfile(request.getProfileId());
