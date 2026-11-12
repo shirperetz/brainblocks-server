@@ -308,8 +308,10 @@ public class LiveRoomService {
         Player pl = r.players.values().stream().filter(x -> me.equals(x.profileId)).findFirst().orElse(null);
         if (pl == null) {
             pl = new Player(r.nextPlayer++, me, p.getName(), p.getAvatar() == null ? null : p.getAvatar().toString(), null, p.getGrade() != null ? p.getGrade() : r.grade);
-            // A child of the room's class comes straight in; anyone else waits for the teacher.
-            pl.approved = r.classId != null && r.classId.equals(p.getClassId());
+            // A child of the room's class comes straight in; a child of another class waits for the teacher.
+            // 2026-11-12: a room with no class (Shir opens one for "everyone" - there are no classes yet) lets
+            // every logged-in child in; before, her sister waited forever for an approval no one saw.
+            pl.approved = r.classId == null || r.classId.equals(p.getClassId());
             r.players.put(pl.id, pl);
         }
         return me(r, pl);

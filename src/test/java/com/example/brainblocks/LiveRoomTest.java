@@ -113,6 +113,15 @@ class LiveRoomTest {
         String gt = (String) g1.get("guestToken");
         assertThat(status("/api/learn/room-guest/join", HttpMethod.POST, new HttpHeaders(), Map.of("code", "000000", "name", "x"))).isEqualTo(404);
 
+        // 2026-11-12 (Shir's sister couldn't get in): a room with NO class - every logged-in child comes
+        // straight in (any class); a guest still waits for the teacher.
+        Map<String, Object> open = call("/api/learn/rooms", HttpMethod.POST, as(dana), Map.of("topics", List.of("MY"), "minutes", 5));
+        String openCode = (String) open.get("code");
+        assertThat(call("/api/learn/rooms/join", HttpMethod.POST, as(o), Map.of("code", openCode))).containsEntry("status", "IN");
+        assertThat(call("/api/learn/room-guest/join", HttpMethod.POST, new HttpHeaders(), Map.of("code", openCode, "name", "אורח")))
+                .containsEntry("status", "WAITING");
+        call("/api/learn/rooms/" + open.get("id") + "/end", HttpMethod.POST, as(dana), null);
+
         Map<String, Object> lobby = call(live, HttpMethod.GET, as(dana), null);
         assertThat(lobby).containsEntry("state", "LOBBY");
         assertThat((List<?>) lobby.get("players")).hasSize(1);
