@@ -18,14 +18,20 @@ public final class GradeTopics {
 
     private static final Set<Topic> FIRST = EnumSet.of(Topic.ADDITION, Topic.SUBTRACTION, Topic.COMPARISON,
             Topic.SEQUENCES, Topic.MIXED, Topic.DRAGON, Topic.BALLOONS, Topic.BRIDGE, Topic.TRAIN);
+    // 2026-11-12 (curriculum by grade): ב׳ - multiplication/division as groups (2/5/10); ג׳ - unit
+    // fractions, angles, sides and perimeter; ד׳ - + area (rectangle/square). Each at its grade's level.
+    private static final Set<Topic> SECOND = EnumSet.of(Topic.ADDITION, Topic.SUBTRACTION, Topic.COMPARISON,
+            Topic.SEQUENCES, Topic.MIXED, Topic.DRAGON, Topic.BALLOONS, Topic.BRIDGE, Topic.TRAIN,
+            Topic.MULTIPLICATION, Topic.DIVISION);
     private static final Set<Topic> THIRD = EnumSet.of(Topic.ADDITION, Topic.SUBTRACTION, Topic.MULTIPLICATION,
-            Topic.DIVISION, Topic.COMPARISON, Topic.SEQUENCES, Topic.MIXED);
+            Topic.DIVISION, Topic.COMPARISON, Topic.SEQUENCES, Topic.MIXED, Topic.FRACTIONS, Topic.ANGLES, Topic.PERIMETER);
     private static final Set<Topic> FOURTH = EnumSet.of(Topic.ADDITION, Topic.SUBTRACTION, Topic.MULTIPLICATION,
-            Topic.DIVISION, Topic.COMPARISON, Topic.SEQUENCES, Topic.WORD_PROBLEMS, Topic.MIXED);
+            Topic.DIVISION, Topic.COMPARISON, Topic.SEQUENCES, Topic.WORD_PROBLEMS, Topic.MIXED,
+            Topic.FRACTIONS, Topic.ANGLES, Topic.PERIMETER, Topic.AREA);
     private static final Set<Topic> UPPER = EnumSet.complementOf(EnumSet.of(Topic.DRAGON, Topic.BALLOONS, Topic.BRIDGE, Topic.TRAIN));
 
     private static final Map<Grade, Set<Topic>> BY_GRADE = Map.of(
-            Grade.G1, FIRST, Grade.G2, FIRST, Grade.G3, THIRD, Grade.G4, FOURTH, Grade.G5, UPPER, Grade.G6, UPPER);
+            Grade.G1, FIRST, Grade.G2, SECOND, Grade.G3, THIRD, Grade.G4, FOURTH, Grade.G5, UPPER, Grade.G6, UPPER);
 
     public static boolean allowed(Topic topic, Grade grade) {
         if (grade == null || topic == null) return true;

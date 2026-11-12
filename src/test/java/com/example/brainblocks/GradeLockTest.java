@@ -72,17 +72,17 @@ class GradeLockTest {
         assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("grade", "G6"))).isEqualTo(403);
         assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("companion", "OWL"))).isEqualTo(200);
         assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=MULTIPLICATION&stage=1", HttpMethod.GET, k, null)).isEqualTo(200);
-        assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=FRACTIONS&stage=1", HttpMethod.GET, k, null)).isEqualTo(403);
-        assertThat(status("/api/learn/sessions", HttpMethod.POST, k, Map.of("profileId", kidId, "topic", "FRACTIONS", "stage", 1,
+        assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=ANGLE_CALC&stage=1", HttpMethod.GET, k, null)).isEqualTo(403);
+        assertThat(status("/api/learn/sessions", HttpMethod.POST, k, Map.of("profileId", kidId, "topic", "ANGLE_CALC", "stage", 1,
                 "answers", List.of(Map.of("questionText", "x", "chosenAnswer", "1", "correctAnswer", "1", "correct", true))))).isEqualTo(403);
 
         // The class moves to grade ה׳ - every child in it too.
         assertThat(status("/api/learn/staff/classes/" + cls.get("id"), HttpMethod.PATCH, boss, Map.of("grade", "G5"))).isEqualTo(200);
-        assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=FRACTIONS&stage=1", HttpMethod.GET, k, null)).isEqualTo(200);
+        assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=ANGLE_CALC&stage=1", HttpMethod.GET, k, null)).isEqualTo(200);
 
         // One child set by hand, then unlocked: the child may choose again.
         assertThat(status("/api/learn/staff/children/" + kidId + "/grade", HttpMethod.POST, boss, Map.of("grade", "G2", "locked", true))).isEqualTo(200);
-        assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=MULTIPLICATION&stage=1", HttpMethod.GET, k, null)).isEqualTo(403);
+        assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=FRACTIONS&stage=1", HttpMethod.GET, k, null)).isEqualTo(403);
         assertThat(status("/api/learn/staff/children/" + kidId + "/grade", HttpMethod.POST, boss, Map.of("locked", false))).isEqualTo(200);
         assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("grade", "G4"))).isEqualTo(200);
 

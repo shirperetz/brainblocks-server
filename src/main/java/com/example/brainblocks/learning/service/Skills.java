@@ -74,6 +74,10 @@ public final class Skills {
         NAMES.put("ANG_RIGHT_TRIANGLE", "משולש ישר-זווית");
         NAMES.put("ANG_AROUND_POINT", "זוויות סביב נקודה");
         NAMES.put("ANG_ISOSCELES", "משולש שווה-שוקיים");
+        NAMES.put("ANG_QUADRILATERAL", "זוויות במרובע"); // 2026-11-12: ו׳
+        NAMES.put("ANG_VERTICAL_ADJACENT", "זוויות קודקודיות וצמודות");
+        NAMES.put("AREA_PARALLELOGRAM", "שטח מקבילית");
+        NAMES.put("PER_CIRCLE", "היקף עיגול");
         // צלעות, היקף, שטח
         NAMES.put("GEO_SIDES", "כמה צלעות");
         NAMES.put("GEO_SHAPE_NAME", "שמות צורות");

@@ -48,17 +48,31 @@ final class FractionGeometryQuestions {
             {8},          // 6: צמצום (ו׳: גם עשרוניים ומכנים שונים)
     };
 
+    /**
+     * 2026-11-12 (Shir: "by grade - what each child learns, at the level of its grade"): which fraction
+     * levels a grade gets (indexes into FRACTION_LEVELS). ג׳ = writing a fraction / the shaded part only
+     * (unit fractions); ד׳ = + equal fractions + add/subtract with the same denominator; ה׳-ו׳ = all six,
+     * exactly as before. A grade's stages beyond its levels repeat its last level.
+     */
+    static int[] fractionLevelsFor(Grade grade) {
+        if (grade == Grade.G3) return new int[] {0};
+        if (grade == Grade.G4) return new int[] {0, 3, 4};
+        return new int[] {0, 1, 2, 3, 4, 5};
+    }
+
     QuestionResponse fraction(int id, Grade grade, int stage, boolean withPicture) {
         boolean g6 = grade == Grade.G6;
         int s = Math.min(Math.max(stage, 1), 6);
+        int[] mine = fractionLevelsFor(grade);
+        int at = Math.min(s, mine.length) - 1;
         List<Integer> current = new ArrayList<>();
-        for (int k : FRACTION_LEVELS[s - 1]) current.add(k);
+        for (int k : FRACTION_LEVELS[mine[at]]) current.add(k);
         if (s == 6 && g6) {
             current.add(10); // עשרוניים
             current.add(6);  // מכנים שונים
         }
         List<Integer> earlier = new ArrayList<>();
-        for (int i = 0; i < s - 1; i++) for (int k : FRACTION_LEVELS[i]) earlier.add(k);
+        for (int i = 0; i < at; i++) for (int k : FRACTION_LEVELS[mine[i]]) earlier.add(k);
         if (!withPicture) {
             current.remove(Integer.valueOf(1));
             earlier.remove(Integer.valueOf(1));
@@ -421,10 +435,38 @@ final class FractionGeometryQuestions {
     /** Which topic the questions being built belong to (the geometry methods are shared by the tracks). */
     private Topic geoTopic = Topic.GEOMETRY;
 
+    /**
+     * 2026-11-12 (Shir: "grade ו׳ learns higher geometry than ה׳"): the levels each grade gets per track.
+     *  ג׳: זוויות 1-2 (סוג זווית, ישרה/שטוחה), צלעות והיקף 1-2 (צלעות ושמות, היקף מלבן).
+     *  ד׳: זוויות 1-4, צלעות והיקף 1-5, שטח 1-3 (מלבן, ריבוע, צלע לפי שטח). חישוב זוויות - מה׳.
+     *  ה׳: as before. ו׳: as before + its own harder level 6 (מרובע 360°, קודקודיות/צמודות,
+     *  שטח מקבילית, היקף עיגול).
+     */
+    int[][] trackLevelsFor(Topic track, Grade grade) {
+        int[][] all = TRACK_LEVELS.get(track);
+        int keep = switch (grade == null ? Grade.G5 : grade) {
+            case G1, G2 -> 1;
+            case G3 -> track == Topic.ANGLES || track == Topic.PERIMETER ? 2 : 1;
+            case G4 -> track == Topic.ANGLES ? 4 : track == Topic.PERIMETER ? 5 : track == Topic.AREA ? 3 : 6;
+            default -> 6;
+        };
+        int[][] out = java.util.Arrays.copyOf(all, keep);
+        if (grade == Grade.G6) {
+            out = all.clone();
+            if (track == Topic.ANGLE_CALC) out[5] = new int[] {22, 23};
+            if (track == Topic.AREA) out[5] = new int[] {24, 25};
+        }
+        return out;
+    }
+
     QuestionResponse geometryTrack(int id, Topic track, int stage, boolean withPicture) {
+        return geometryTrack(id, track, stage, withPicture, Grade.G5);
+    }
+
+    QuestionResponse geometryTrack(int id, Topic track, int stage, boolean withPicture, Grade grade) {
         small = id < SMALL_FIRST; // first questions of a round: small numbers
-        int[][] levels = TRACK_LEVELS.get(track);
-        int s = Math.min(Math.max(stage, 1), 6);
+        int[][] levels = trackLevelsFor(track, grade);
+        int s = Math.min(Math.max(stage, 1), levels.length);
         List<Integer> current = new ArrayList<>();
         for (int k : levels[s - 1]) current.add(k);
         List<Integer> earlier = new ArrayList<>();
@@ -474,6 +516,10 @@ final class FractionGeometryQuestions {
             case 19 -> whichAngleIs(id).withSkill("ANG_WHICH");
             case 20 -> triangleType(id).withSkill("ANG_TRIANGLE_TYPE");
             case 21 -> isoscelesAngles(id).withSkill("ANG_ISOSCELES");
+            case 22 -> quadrilateralAngle(id).withSkill("ANG_QUADRILATERAL");
+            case 23 -> verticalAngles(id).withSkill("ANG_VERTICAL_ADJACENT");
+            case 24 -> parallelogramArea(id).withSkill("AREA_PARALLELOGRAM");
+            case 25 -> circleCircumference(id).withSkill("PER_CIRCLE");
             default -> shapeName(id).withSkill("GEO_SHAPE_NAME");
         };
     }
@@ -555,6 +601,57 @@ final class FractionGeometryQuestions {
         return number(id, "במשולש שווה-שוקיים כל זווית בסיס היא " + baseAngle + "°. כמה מעלות זווית הראש?", r,
                 List.of(180 - baseAngle, baseAngle, r + 10), "שתי זוויות הבסיס שוות - יחד הן פעמיים " + baseAngle + "°. מה שחסר עד 180° הוא זווית הראש.",
                 "2 × " + baseAngle + " = " + 2 * baseAngle + ", ו-180 - " + 2 * baseAngle + " = " + r + "°.", null);
+    }
+
+    // ---- כיתה ו׳ (2026-11-12, Shir: "ו׳ learns higher geometry") ----
+
+    /** The four angles of a quadrilateral make 360°. */
+    private QuestionResponse quadrilateralAngle(int id) {
+        int a = 5 * rand(14, 24), b = 5 * rand(14, 24), c = 5 * rand(14, 24); // 70-120 each
+        int r = 360 - a - b - c;
+        return number(id, "במרובע יש ארבע זוויות. שלוש מהן " + a + "°, " + b + "° ו-" + c + "°. כמה מעלות הרביעית?", r,
+                List.of(Math.max(10, 180 - (a + b + c) % 180), r + 10, r - 10, r + 30),
+                "סכום הזוויות במרובע הוא 360° (כמו שני משולשים).",
+                a + " + " + b + " + " + c + " = " + (a + b + c) + ", ו-360 - " + (a + b + c) + " = " + r + "°.", null);
+    }
+
+    /** Vertical angles are equal; adjacent angles (on a straight line) make 180°. */
+    private QuestionResponse verticalAngles(int id) {
+        int a = 5 * rand(7, 31); // 35-155, never 90
+        if (a == 90) a = 95;
+        if (random.nextBoolean()) {
+            return number(id, "שני ישרים נחתכים. אחת הזוויות היא " + a + "°. כמה מעלות הזווית שמולה (הקודקודית)?", a,
+                    List.of(180 - a, 360 - a, a + 10), "זוויות קודקודיות - אלה שמול אחת השנייה - שוות.",
+                    "הזווית שמול " + a + "° היא גם " + a + "°.", null);
+        }
+        return number(id, "שני ישרים נחתכים. אחת הזוויות היא " + a + "°. כמה מעלות הזווית שלידה (הצמודה)?", 180 - a,
+                List.of(a, 360 - a, 180 - a + 10), "זוויות צמודות יחד יוצרות קו ישר - 180°.",
+                "180 - " + a + " = " + (180 - a) + "°.", null);
+    }
+
+    /** Parallelogram: base x height (not base x the slanted side). */
+    private QuestionResponse parallelogramArea(int id) {
+        int base = rand(3, upTo(8, 15)), height = rand(2, upTo(6, 12)), side = height + rand(1, 4);
+        int r = base * height;
+        return number(id, "למקבילית בסיס " + base + " ס\"מ, צלע משופעת " + side + " ס\"מ וגובה " + height + " ס\"מ. מה השטח? (בסמ\"ר)", r,
+                List.of(base * side, 2 * (base + side), r + base),
+                "שטח מקבילית = בסיס × גובה (הגובה - לא הצלע המשופעת).",
+                base + " × " + height + " = " + r + " סמ\"ר.", null);
+    }
+
+    /** Circle circumference with pi = 3.14 (whole-number diameter). */
+    private QuestionResponse circleCircumference(int id) {
+        int d = new int[] {2, 5, 10, 20, 50, 100}[random.nextInt(small ? 3 : 6)];
+        String r = trimDecimal(3.14 * d);
+        List<String> wrong = List.of(trimDecimal(1.57 * d), trimDecimal(3.14 * d * d / 4), String.valueOf(3 * d + 1));
+        return text(id, geoTopic, "קוטר של עיגול הוא " + d + " ס\"מ. מה היקף העיגול? (π = 3.14)", r, wrong,
+                "היקף עיגול = קוטר × π.", d + " × 3.14 = " + r + " ס\"מ.", null);
+    }
+
+    private static String trimDecimal(double v) {
+        String t = String.format(java.util.Locale.US, "%.2f", v);
+        if (t.contains(".")) t = t.replaceAll("0+$", "").replaceAll("\\.$", "");
+        return t;
     }
 
     /** Three angles around a point make 360°. */

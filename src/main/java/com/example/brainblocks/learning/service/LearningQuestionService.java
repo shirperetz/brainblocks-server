@@ -47,7 +47,7 @@ public class LearningQuestionService {
             questions.add(actual == Topic.FRACTIONS ? fractionGeometry.fraction(i, g, s, topic != Topic.MIXED)
                     : actual == Topic.GEOMETRY ? fractionGeometry.geometry(i, s, topic != Topic.MIXED)
                     : actual == Topic.ANGLES || actual == Topic.ANGLE_CALC || actual == Topic.PERIMETER || actual == Topic.AREA
-                            ? fractionGeometry.geometryTrack(i, actual, s, true)
+                            ? fractionGeometry.geometryTrack(i, actual, s, true, g)
                     : buildQuestion(i, actual, g, d, s));
         }
         // 2026-11-11: every question says which skill it practices (fractions/geometry tag themselves).
@@ -87,7 +87,7 @@ public class LearningQuestionService {
             case MIXED -> addition(id, grade, diff, stage); // MIXED is resolved earlier; safety fallback
             case FRACTIONS -> fractionGeometry.fraction(id, grade, stage, true);
             case GEOMETRY -> fractionGeometry.geometry(id, stage, true);
-            case ANGLES, ANGLE_CALC, PERIMETER, AREA -> fractionGeometry.geometryTrack(id, topic, stage, true);
+            case ANGLES, ANGLE_CALC, PERIMETER, AREA -> fractionGeometry.geometryTrack(id, topic, stage, true, grade);
             // Island games build their own rounds in the client; a plain addition question is a safe fallback.
             case DRAGON, BALLOONS, BRIDGE, TRAIN -> addition(id, grade, diff, stage);
         };
@@ -170,10 +170,13 @@ public class LearningQuestionService {
                 visual);
     }
 
+    /** 2026-11-12 (curriculum): ב׳ learns multiplication/division as groups - the 2, 5 and 10 tables only. */
+    private static final int[] G2_TABLES = {2, 5, 10};
+
     private QuestionResponse multiplication(int id, Grade grade, Difficulty diff, int stage) {
         int max = Math.max(3, scaled(factorMax(grade), stage, diff));
-        int a = rand(2, max);
-        int b = rand(2, max);
+        int a = grade == Grade.G2 ? G2_TABLES[random.nextInt(stage <= 2 ? 2 : 3)] : rand(2, max);
+        int b = grade == Grade.G2 ? rand(2, stage <= 2 ? 5 : 10) : rand(2, max);
         int result = a * b;
         VisualModel visual = (a <= 5 && b <= 5)
                 ? new VisualModel("GROUPS", GROUP_EMOJI, a, b, result, "×")
@@ -188,8 +191,8 @@ public class LearningQuestionService {
 
     private QuestionResponse division(int id, Grade grade, Difficulty diff, int stage) {
         int max = Math.max(3, scaled(factorMax(grade), stage, diff));
-        int b = rand(2, max);
-        int result = rand(2, max);
+        int b = grade == Grade.G2 ? G2_TABLES[random.nextInt(stage <= 2 ? 2 : 3)] : rand(2, max);
+        int result = grade == Grade.G2 ? rand(2, stage <= 2 ? 5 : 10) : rand(2, max);
         int a = b * result;
         return build(id, Topic.DIVISION,
                 "כמה זה " + a + " ÷ " + b + "?",
@@ -419,10 +422,11 @@ public class LearningQuestionService {
         return switch (grade) {
             case G1 -> 20;
             case G2 -> 100;
-            case G3 -> 200;
-            case G4 -> 1000;
-            case G5 -> 2000;
-            case G6 -> 10000;
+            // 2026-11-12 (curriculum by grade): ג׳ to 1,000, ד׳ to 10,000, larger in ה׳-ו׳ (was 200/1,000/2,000/10,000).
+            case G3 -> 1000;
+            case G4 -> 10000;
+            case G5 -> 20000;
+            case G6 -> 100000;
         };
     }
 
