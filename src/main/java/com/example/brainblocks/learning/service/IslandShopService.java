@@ -27,18 +27,24 @@ import java.util.Set;
 public class IslandShopService {
 
     /** One thing to build: its levels' names, prices and what each level gives. */
-    public record Kind(String key, String category, String[] names, int[] costs, String[] perks) {}
+    /** season: null = on every island; "snow" etc. = only on that season's islands (2026-11-13). */
+    public record Kind(String key, String category, String[] names, int[] costs, String[] perks, String season) {}
 
     public static final Map<String, Kind> CATALOG = new LinkedHashMap<>();
 
     private static void add(String key, String cat, String[] names, int[] costs, String[] perks) {
-        CATALOG.put(key, new Kind(key, cat, names, costs, perks));
+        CATALOG.put(key, new Kind(key, cat, names, costs, perks, null));
+    }
+
+    private static void addSeason(String season, String key, String cat, String[] names, int[] costs, String[] perks) {
+        CATALOG.put(key, new Kind(key, cat, names, costs, perks, season));
     }
 
     static {
         // 2026-11-13 (Shir: "a castle, not only a house - a house first, until it can be upgraded to a castle")
-        add("house", "home", new String[] {"אוהל", "בית קטן", "בית גדול", "טירה"}, new int[] {10, 30, 60, 120},
-                new String[] {"מקום לישון באי", "חלונות מוארים וארובה", "קומה שנייה ומרפסת", "חומות, מגדלים ודגלים"});
+        add("house", "home", new String[] {"אוהל", "בית קטן", "בית גדול", "טירה", "ארמון זהב"}, new int[] {10, 30, 60, 120, 250},
+                new String[] {"מקום לישון באי", "חלונות מוארים וארובה", "קומה שנייה ומרפסת", "חומות, מגדלים ודגלים",
+                        "גגות זהב, כיפה ודגלים מתנופפים"});
         // 2026-11-13 (Shir: "and if I bought everything?"): more levels for what had one or two
         add("farm", "food", new String[] {"ערוגת ירקות", "חווה", "חווה עם תרנגולות"}, new int[] {15, 40, 80},
                 new String[] {"ירקות צבעוניים", "אסם וגדר", "לול ותרנגולות"});
@@ -48,13 +54,59 @@ public class IslandShopService {
                 new String[] {"כנפיים שמסתובבות", "טחנה גבוהה יותר", "מאפייה עם ארובה"});
         add("lighthouse", "production", new String[] {"מגדלור", "מגדלור ובית שומר"}, new int[] {40, 85},
                 new String[] {"אור שמאיר את הים", "בית קטן לשומר המגדלור"});
-        add("tree", "decor", new String[] {"עץ", "עץ תפוחים"}, new int[] {5, 12}, new String[] {"עוד ירוק באי", "תפוחים אדומים"});
-        add("palm", "decor", new String[] {"דקל"}, new int[] {6}, new String[] {"חוף טרופי"});
+        add("tree", "decor", new String[] {"עץ", "עץ תפוחים", "עץ ענק"}, new int[] {5, 12, 30},
+                new String[] {"עוד ירוק באי", "תפוחים אדומים", "עץ עתיק ורחב עם נדנדה"});
+        add("palm", "decor", new String[] {"דקל", "דקל עם קוקוסים"}, new int[] {6, 14}, new String[] {"חוף טרופי", "קוקוסים וערסל"});
         add("flowers", "decor", new String[] {"ערוגת פרחים", "גן פרחים"}, new int[] {4, 10},
                 new String[] {"צבע ליד הבית", "גן גדול עם ספסל"});
-        add("boat", "transport", new String[] {"סירת מפרש"}, new int[] {30}, new String[] {"סירה ליד החוף"});
+        add("boat", "transport", new String[] {"סירת מפרש", "סירת דייגים"}, new int[] {30, 55},
+                new String[] {"סירה ליד החוף", "רשת דייגים ודגים"});
         add("ship", "transport", new String[] {"ספינה", "ספינת מפרשים גדולה"}, new int[] {80, 150},
                 new String[] {"ספינה עם תורן ומפרשים", "שני תרנים ודגל"});
+        // 2026-11-13 (Shir: "upgrade what's inside the islands - change, add, everything")
+        add("school", "home", new String[] {"בית ספר", "בית ספר עם פעמון"}, new int[] {50, 100},
+                new String[] {"כיתה קטנה באי", "מגדל פעמון ומגרש"});
+        add("well", "production", new String[] {"באר"}, new int[] {8}, new String[] {"מים לכל האי"});
+        add("fountain", "decor", new String[] {"מזרקה", "מזרקה גדולה"}, new int[] {20, 45},
+                new String[] {"מים שקופצים למעלה", "שתי קומות של מים"});
+        add("playground", "decor", new String[] {"גן שעשועים"}, new int[] {35}, new String[] {"מגלשה ונדנדה"});
+        add("pond", "decor", new String[] {"בריכת דגים", "בריכה עם ברווזים"}, new int[] {15, 30},
+                new String[] {"דגים כתומים", "ברווזים שוחים"});
+        add("sheep", "animals", new String[] {"כבשים", "עדר כבשים"}, new int[] {12, 28},
+                new String[] {"שתי כבשים לבנות", "עדר וגדר"});
+        add("cow", "animals", new String[] {"פרה", "רפת"}, new int[] {18, 40}, new String[] {"פרה מנוקדת", "רפת עם שתי פרות"});
+        add("horse", "animals", new String[] {"סוס", "אורווה"}, new int[] {25, 55}, new String[] {"סוס חום", "אורווה וגדר"});
+        // only on one season's island
+        addSeason("snow", "snowman", "decor", new String[] {"איש שלג", "משפחת אנשי שלג"}, new int[] {6, 15},
+                new String[] {"עם אף גזר וכובע", "שלושה אנשי שלג"});
+        addSeason("snow", "igloo", "home", new String[] {"איגלו"}, new int[] {30}, new String[] {"בית קרח עגול"});
+        addSeason("snow", "penguin", "animals", new String[] {"פינגווינים"}, new int[] {20}, new String[] {"שלושה פינגווינים"});
+        addSeason("desert", "cactus", "decor", new String[] {"קקטוס", "קקטוס פורח"}, new int[] {5, 12},
+                new String[] {"ירוק וקוצני", "פרחים ורודים"});
+        addSeason("desert", "camel", "animals", new String[] {"גמל"}, new int[] {25}, new String[] {"גמל עם שתי דבשות"});
+        addSeason("desert", "pyramid", "production", new String[] {"פירמידה"}, new int[] {90}, new String[] {"פירמידת זהב"});
+        addSeason("sunset", "lantern", "decor", new String[] {"פנסים", "שדרת פנסים"}, new int[] {8, 20},
+                new String[] {"אור חם בערב", "שישה פנסים דולקים"});
+        addSeason("sunset", "campfire", "decor", new String[] {"מדורה"}, new int[] {12}, new String[] {"אש וספסלים"});
+        // further islands' prizes
+        add("balloon", "transport", new String[] {"כדור פורח", "כדור פורח גדול"}, new int[] {70, 140},
+                new String[] {"מרחף מעל האי", "סל גדול ופסים צבעוניים"});
+        add("rocket", "transport", new String[] {"חללית"}, new int[] {220}, new String[] {"חללית שמוכנה לטוס לירח"});
+    }
+
+    /**
+     * 2026-11-13 (Shir: "on every island new things to buy"): from which island (0 = the first) each
+     * thing can be bought; everything else from the first. Each island shows its new ones, and what
+     * the next island will bring.
+     */
+    public static final Map<String, Integer> FROM_ISLE = Map.of(
+            "school", 1, "fountain", 1, "cow", 1,
+            "playground", 2, "horse", 2,
+            "balloon", 3,
+            "rocket", 5);
+
+    public static int fromIsle(String kind) {
+        return FROM_ISLE.getOrDefault(kind, 0);
     }
 
     public static final int OPEN_SLOTS = 8;
@@ -275,6 +327,8 @@ public class IslandShopService {
             for (int i = 0; i < costs.length; i++) costs[i] = price(k.costs()[i], isle);
             c.put("costs", costs);
             c.put("perks", k.perks());
+            c.put("season", k.season());
+            c.put("fromIsle", fromIsle(k.key()));
             cat.add(c);
         }
         out.put("catalog", cat);
@@ -304,6 +358,8 @@ public class IslandShopService {
     public Map<String, Object> build(Long profileId, int isle, int slot, String kind) {
         Kind k = CATALOG.get(kind);
         if (k == null) throw bad("אין דבר כזה בחנות");
+        if (k.season() != null && !k.season().equals(seasonOf(isle))) throw bad("זה מתאים רק לאי בעונה אחרת");
+        if (isle < fromIsle(kind)) throw bad("זה נפתח רק באי מספר " + (fromIsle(kind) + 1));
         Map<String, Object> st = state(profileId, isle);
         if (slot < 0 || slot >= ((Number) st.get("openSlots")).intValue()) throw bad("המקום הזה עוד לא שלך");
         int stored = isle * 1000 + slot;

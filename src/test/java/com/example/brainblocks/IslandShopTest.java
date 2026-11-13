@@ -180,6 +180,16 @@ class IslandShopTest {
         // taking down on island 1 gives back 13
         r = post(kid, k, "remove", Map.of("isle", 1, "slot", 3));
         assertThat(r.getBody()).containsEntry("coins", before - 150);
+        // a season's own things: a snowman only on the snow island (1), not on the summer one (0)
+        assertThat(post(kid, k, "build", Map.of("isle", 0, "slot", 3, "kind", "snowman")).getStatusCode().value()).isEqualTo(400);
+        assertThat(post(kid, k, "build", Map.of("isle", 1, "slot", 4, "kind", "snowman")).getStatusCode().value()).isEqualTo(200);
+        assertThat(post(kid, k, "build", Map.of("isle", 1, "slot", 5, "kind", "cactus")).getStatusCode().value()).isEqualTo(400);
+        // new things on every island: a school from island 2 (index 1), not on the first; a rocket not yet
+        assertThat(post(kid, k, "build", Map.of("isle", 0, "slot", 3, "kind", "school")).getStatusCode().value()).isEqualTo(400);
+        assertThat(post(kid, k, "build", Map.of("isle", 1, "slot", 6, "kind", "school")).getStatusCode().value()).isEqualTo(200);
+        assertThat(post(kid, k, "build", Map.of("isle", 1, "slot", 7, "kind", "rocket")).getStatusCode().value()).isEqualTo(400);
+        // the house has a 5th level: the golden palace
+        assertThat(((List<Integer>) ((List<Map<String, Object>>) r.getBody().get("catalog")).get(0).get("costs"))).hasSize(5);
         // the farm now has 3 levels
         assertThat(((List<Integer>) ((List<Map<String, Object>>) r.getBody().get("catalog")).get(1).get("costs"))).hasSize(3);
     }
