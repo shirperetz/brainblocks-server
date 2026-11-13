@@ -43,6 +43,12 @@ public class LearnClass {
     public Grade getGrade() { return grade; }
     public void setGrade(Grade grade) { this.grade = grade; }
 
+    /** 2026-11-13 (Shir: "if a class has 25 students it can't have more"): set by the admin only; null = no limit. */
+    private Integer maxStudents;
+
+    public Integer getMaxStudents() { return maxStudents; }
+    public void setMaxStudents(Integer maxStudents) { this.maxStudents = maxStudents; }
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -83,6 +83,7 @@ public class StaffController {
                     .map(LearnerProfile::getName).findFirst().orElse(""));
             m.put("children", everyone.stream().filter(p -> c.getId().equals(p.getClassId()) && p.isApproved()).count());
             m.put("waiting", everyone.stream().filter(p -> c.getId().equals(p.getClassId()) && !p.isApproved() && !p.isDisabled()).count());
+            m.put("maxStudents", c.getMaxStudents());
             out.add(m);
         }
         return out;
@@ -116,6 +117,20 @@ public class StaffController {
         if (body.get("name") != null) c.setName(className(body.get("name")));
         if (body.get("closed") != null) c.setClosed(Boolean.parseBoolean(body.get("closed").toString()));
         if (Boolean.TRUE.equals(body.get("newCode"))) c.setJoinCode(accounts.newClassCode());
+        // 2026-11-13 (Shir: "I, the admin, set how many a class can have; she approves up to that"): only the admin.
+        if (body.containsKey("maxStudents")) {
+            if (access.role(v) != AccessService.Role.ADMIN) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "רק המנהלת קובעת כמה תלמידים בכיתה");
+            }
+            Object raw = body.get("maxStudents");
+            Integer max = raw == null || raw.toString().isBlank() || "0".equals(raw.toString()) ? null : Integer.valueOf(raw.toString().trim());
+            if (max != null && (max < 1 || max > 200)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "מספר תלמידים: 1 עד 200");
+            long now = approvedIn(c.getId(), null);
+            if (max != null && now > max) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "יש כבר " + now + " תלמידים בכיתה - אי אפשר פחות מזה");
+            }
+            c.setMaxStudents(max);
+        }
         // 2026-11-12: the class's grade - every child in it gets it, locked ("" = no grade, unlocks them).
         if (body.containsKey("grade")) {
             Object g = body.get("grade");
@@ -130,7 +145,28 @@ public class StaffController {
             }
         }
         classes.save(c);
-        return Map.of("id", c.getId(), "name", c.getName(), "joinCode", c.getJoinCode(), "closed", c.isClosed());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", c.getId());
+        out.put("name", c.getName());
+        out.put("joinCode", c.getJoinCode());
+        out.put("closed", c.isClosed());
+        out.put("maxStudents", c.getMaxStudents());
+        return out;
+    }
+
+    /** How many approved children are in the class (not counting one child, e.g. the one being moved). */
+    private long approvedIn(Long classId, Long except) {
+        return profiles.findAll().stream().filter(p -> classId.equals(p.getClassId()) && p.isApproved()
+                && !p.isTeacher() && !p.isAdmin() && !p.getId().equals(except)).count();
+    }
+
+    /** A class at its limit: nobody more is approved into it or moved into it (Shir: "never more than 25"). */
+    private void requireRoom(LearnClass c, Long childId) {
+        if (c == null || c.getMaxStudents() == null) return;
+        if (approvedIn(c.getId(), childId) >= c.getMaxStudents()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "הכיתה " + c.getName() + " מלאה (" + c.getMaxStudents() + " מתוך " + c.getMaxStudents() + "). רק המנהלת יכולה להגדיל אותה");
+        }
     }
 
     /**
@@ -291,6 +327,7 @@ public class StaffController {
         if (target != null && !admin && !target.getTeacherId().equals(v.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "זו לא כיתה שלך");
         }
+        if (p.isApproved() && !java.util.Objects.equals(p.getClassId(), classId)) requireRoom(target, id);
         p.setClassId(classId);
         // A class that practices one grade gives it to the child, locked (as when joining with its code).
         if (target != null && target.getGrade() != null) {

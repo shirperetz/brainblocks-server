@@ -181,6 +181,17 @@ public class AccountService {
     /** The admin lets a new child in. */
     public ProfileResponse approve(Long id) {
         LearnerProfile p = profileService.findProfile(id);
+        // 2026-11-13 (Shir: "a class of 25 never has more than 25"): a full class takes no one new.
+        if (!p.isApproved() && p.getClassId() != null && classes != null) {
+            classes.findById(p.getClassId()).filter(c -> c.getMaxStudents() != null).ifPresent(c -> {
+                long in = repository.findAll().stream().filter(x -> c.getId().equals(x.getClassId()) && x.isApproved()
+                        && !x.isTeacher() && !x.isAdmin()).count();
+                if (in >= c.getMaxStudents()) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "הכיתה " + c.getName() + " מלאה ("
+                            + c.getMaxStudents() + " מתוך " + c.getMaxStudents() + "). רק המנהלת יכולה להגדיל אותה");
+                }
+            });
+        }
         p.setApproved(true);
         repository.save(p);
         return ProfileResponse.fromEntity(p);

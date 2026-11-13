@@ -127,4 +127,52 @@ class IslandShopTest {
         assertThat(http.exchange("/api/learn/profiles/" + kid + "/my-island", HttpMethod.GET, new HttpEntity<>(as((String) b.get("token"))), String.class)
                 .getStatusCode().value()).isIn(403, 404);
     }
+
+    @Autowired com.example.brainblocks.learning.repository.LearnIslandItemRepository items;
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void aFullIslandOpensANewOneInAnotherSeason() {
+        http.postForObject("/api/learn/auth/register", new HashMap<>(Map.of("joinCode", "4711", "username", "boss",
+                "password", "secret12", "name", "boss", "avatar", "GIRL")), Map.class); // if the other test did not
+        String boss = (String) http.postForObject("/api/learn/auth/login", Map.of("username", "boss", "password", "secret12"), Map.class).get("token");
+        Map<String, Object> a = register("islekid", boss);
+        Long kid = (Long) a.get("id");
+        String k = (String) a.get("token");
+        items.save(new com.example.brainblocks.learning.model.LearnIslandItem(kid, "bonus", 0, 10_000));
+
+        Map<String, Object> s = state(kid, k);
+        assertThat(s).containsEntry("isle", 0).containsEntry("season", "summer");
+        assertThat(s.get("nextIsle")).isNull();
+        assertThat(post(kid, k, "new-isle", Map.of()).getStatusCode().value()).isEqualTo(400); // not full yet
+        // a tent on island 0 place 3
+        assertThat(post(kid, k, "build", Map.of("slot", 3, "kind", "house")).getStatusCode().value()).isEqualTo(200);
+        // grow island 0 to its full 32 places (12 pieces of land)
+        for (int i = 0; i < 12; i++) assertThat(post(kid, k, "land", Map.of()).getStatusCode().value()).isEqualTo(200);
+        s = state(kid, k);
+        assertThat(s).containsEntry("openSlots", 32);
+        Map<String, Object> next = (Map<String, Object>) s.get("nextIsle");
+        assertThat(next).containsEntry("index", 1).containsEntry("season", "snow").containsEntry("cost", 150);
+        int before = (Integer) s.get("coins");
+
+        ResponseEntity<Map> r = post(kid, k, "new-isle", Map.of());
+        assertThat(r.getStatusCode().value()).isEqualTo(200);
+        assertThat(r.getBody()).containsEntry("isle", 1).containsEntry("season", "snow").containsEntry("openSlots", 8)
+                .containsEntry("coins", before - 150);
+        assertThat((List<?>) r.getBody().get("buildings")).isEmpty(); // a new, empty island
+        assertThat((List<?>) r.getBody().get("isles")).hasSize(2);
+        // prices are 25% higher there: a tent 10 -> 13; the same place 3 is free on the new island
+        Map<String, Object> house = ((List<Map<String, Object>>) r.getBody().get("catalog")).get(0);
+        assertThat(((List<Integer>) house.get("costs")).get(0)).isEqualTo(13);
+        r = post(kid, k, "build", Map.of("isle", 1, "slot", 3, "kind", "house"));
+        assertThat(r.getBody()).containsEntry("coins", before - 150 - 13);
+        // island 0 still has its own tent; an island she does not own is refused
+        assertThat((List<?>) state(kid, k).get("buildings")).hasSize(1);
+        assertThat(post(kid, k, "build", Map.of("isle", 2, "slot", 0, "kind", "tree")).getStatusCode().value()).isEqualTo(400);
+        // taking down on island 1 gives back 13
+        r = post(kid, k, "remove", Map.of("isle", 1, "slot", 3));
+        assertThat(r.getBody()).containsEntry("coins", before - 150);
+        // the farm now has 3 levels
+        assertThat(((List<Integer>) ((List<Map<String, Object>>) r.getBody().get("catalog")).get(1).get("costs"))).hasSize(3);
+    }
 }
