@@ -164,6 +164,12 @@ public class LearnerProfile {
     /** 2026-11-13: a child with an account asked to join this class (its code) - waits for its teacher. */
     private Long pendingClassId;
 
+    /** 2026-11-13 (Shir): a teacher's limit of students over all her classes, set by the admin. null = none. */
+    private Integer maxStudents;
+
+    public Integer getMaxStudents() { return maxStudents; }
+    public void setMaxStudents(Integer maxStudents) { this.maxStudents = maxStudents; }
+
     public Long getPendingClassId() { return pendingClassId; }
     public void setPendingClassId(Long pendingClassId) { this.pendingClassId = pendingClassId; }
 

@@ -32,11 +32,14 @@ public class ClassJoinController {
     private final LearnerProfileRepository profiles;
     private final LearnClassRepository classes;
     private final AccessService access;
+    private final com.example.brainblocks.learning.service.SeatsService seats;
 
-    public ClassJoinController(LearnerProfileRepository profiles, LearnClassRepository classes, AccessService access) {
+    public ClassJoinController(LearnerProfileRepository profiles, LearnClassRepository classes, AccessService access,
+                               com.example.brainblocks.learning.service.SeatsService seats) {
         this.profiles = profiles;
         this.classes = classes;
         this.access = access;
+        this.seats = seats;
     }
 
     private static ResponseStatusException bad(HttpStatus s, String why) {
@@ -75,6 +78,7 @@ public class ClassJoinController {
         LearnClass c = classes.findByJoinCode(code).filter(x -> !x.isClosed())
                 .orElseThrow(() -> bad(HttpStatus.NOT_FOUND, "אין כיתה עם הקוד הזה. בדקו אותו עם המורה"));
         if (c.getId().equals(p.getClassId())) throw bad(HttpStatus.BAD_REQUEST, "את/ה כבר בכיתה הזאת");
+        seats.requireSeat(c, p.getId(), true); // full: blocked at once
         p.setPendingClassId(c.getId());
         profiles.save(p);
         return status(p);
@@ -128,14 +132,7 @@ public class ClassJoinController {
     public Map<String, Object> accept(@PathVariable Long childId, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         LearnerProfile p = request(me, childId);
         LearnClass c = classes.findById(p.getPendingClassId()).orElseThrow(() -> bad(HttpStatus.NOT_FOUND, "אין כיתה כזו"));
-        if (c.getMaxStudents() != null) {
-            long in = profiles.findAll().stream().filter(x -> c.getId().equals(x.getClassId()) && x.isApproved()
-                    && !x.isTeacher() && !x.isAdmin()).count();
-            if (in >= c.getMaxStudents()) {
-                throw bad(HttpStatus.CONFLICT, "הכיתה " + c.getName() + " מלאה (" + c.getMaxStudents() + " מתוך "
-                        + c.getMaxStudents() + "). רק המנהלת יכולה להגדיל אותה");
-            }
-        }
+        seats.requireSeat(c, p.getId(), false);
         p.setClassId(c.getId());
         p.setPendingClassId(null);
         // as when joining with the code: a class that practices one grade gives it, locked

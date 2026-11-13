@@ -181,20 +181,20 @@ public class AccountService {
     /** The admin lets a new child in. */
     public ProfileResponse approve(Long id) {
         LearnerProfile p = profileService.findProfile(id);
-        // 2026-11-13 (Shir: "a class of 25 never has more than 25"): a full class takes no one new.
-        if (!p.isApproved() && p.getClassId() != null && classes != null) {
-            classes.findById(p.getClassId()).filter(c -> c.getMaxStudents() != null).ifPresent(c -> {
-                long in = repository.findAll().stream().filter(x -> c.getId().equals(x.getClassId()) && x.isApproved()
-                        && !x.isTeacher() && !x.isAdmin()).count();
-                if (in >= c.getMaxStudents()) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "הכיתה " + c.getName() + " מלאה ("
-                            + c.getMaxStudents() + " מתוך " + c.getMaxStudents() + "). רק המנהלת יכולה להגדיל אותה");
-                }
-            });
+        // 2026-11-13 (Shir: "a class of 25 never has more than 25" - and a teacher's limit): no seat, no approval.
+        if (!p.isApproved() && p.getClassId() != null && classes != null && seats != null) {
+            classes.findById(p.getClassId()).ifPresent(c -> seats.requireSeat(c, p.getId(), false));
         }
         p.setApproved(true);
         repository.save(p);
         return ProfileResponse.fromEntity(p);
+    }
+
+    private SeatsService seats;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setSeats(SeatsService seats) {
+        this.seats = seats;
     }
 
     public boolean isAdmin(Long id) {
@@ -212,6 +212,9 @@ public class AccountService {
         if (classes != null && !code.isEmpty()) {
             var cls = classes.findByJoinCode(code.toUpperCase()).filter(c -> !c.isClosed());
             if (cls.isPresent()) {
+                // 2026-11-13 (Shir: "one child more can't get in - it blocks him at once"): a full class /
+                // teacher stops the sign-up itself (the children still waiting count too).
+                if (seats != null) seats.requireSeat(cls.get(), null, true);
                 Session s = register(username, password, name, avatar, grade, difficulty);
                 LearnerProfile p = profileService.findProfile(s.profile().getId());
                 p.setClassId(cls.get().getId());

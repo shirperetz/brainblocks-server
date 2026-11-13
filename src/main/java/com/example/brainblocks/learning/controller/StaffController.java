@@ -160,14 +160,6 @@ public class StaffController {
                 && !p.isTeacher() && !p.isAdmin() && !p.getId().equals(except)).count();
     }
 
-    /** A class at its limit: nobody more is approved into it or moved into it (Shir: "never more than 25"). */
-    private void requireRoom(LearnClass c, Long childId) {
-        if (c == null || c.getMaxStudents() == null) return;
-        if (approvedIn(c.getId(), childId) >= c.getMaxStudents()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "הכיתה " + c.getName() + " מלאה (" + c.getMaxStudents() + " מתוך " + c.getMaxStudents() + "). רק המנהלת יכולה להגדיל אותה");
-        }
-    }
 
     /**
      * 2026-11-12 (Shir: "possible to delete if needed, and it won't be seen"): the class disappears - its
@@ -340,7 +332,7 @@ public class StaffController {
         if (target != null && !admin && !target.getTeacherId().equals(v.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "זו לא כיתה שלך");
         }
-        if (p.isApproved() && !java.util.Objects.equals(p.getClassId(), classId)) requireRoom(target, id);
+        if (p.isApproved() && !java.util.Objects.equals(p.getClassId(), classId)) seats.requireSeat(target, id, false);
         p.setClassId(classId);
         // A class that practices one grade gives it to the child, locked (as when joining with its code).
         if (target != null && target.getGrade() != null) {
@@ -373,6 +365,8 @@ public class StaffController {
             m.put("approved", t.isApproved());
             m.put("disabled", t.isDisabled());
             m.put("createdAt", t.getCreatedAt());
+            m.put("maxStudents", t.getMaxStudents());
+            m.put("students", seats.ofTeacher(t.getId()));
             m.put("lastActiveAt", t.getLastActiveAt());
             m.put("classes", all.stream().filter(c -> c.getTeacherId().equals(t.getId())).map(LearnClass::getName).toList());
             out.add(m);
@@ -393,6 +387,36 @@ public class StaffController {
         access.requireAdmin(me);
         requireTeacher(id);
         return accounts.setDisabled(id, Boolean.TRUE.equals(body.get("disabled")), me);
+    }
+
+    /** 2026-11-13 (Shir: "I decide how many students a teacher has"): body { maxStudents } - 0/empty = no limit. */
+    @PostMapping("/teachers/{id}/max-students")
+    public Map<String, Object> teacherMax(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                          @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        access.requireAdmin(me);
+        requireTeacher(id);
+        LearnerProfile t = profiles.findById(id).orElseThrow();
+        Object raw = body.get("maxStudents");
+        Integer max = raw == null || raw.toString().isBlank() || "0".equals(raw.toString().trim()) ? null : Integer.valueOf(raw.toString().trim());
+        if (max != null && (max < 1 || max > 1000)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "מספר תלמידים: 1 עד 1000");
+        long now = seats.ofTeacher(id);
+        if (max != null && now > max) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "יש לה כבר " + now + " תלמידים - אי אפשר פחות מזה");
+        }
+        t.setMaxStudents(max);
+        profiles.save(t);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", id);
+        out.put("maxStudents", max);
+        out.put("students", now);
+        return out;
+    }
+
+    private com.example.brainblocks.learning.service.SeatsService seats;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setSeats(com.example.brainblocks.learning.service.SeatsService seats) {
+        this.seats = seats;
     }
 
     private void requireTeacher(Long id) {

@@ -68,19 +68,24 @@ class ClassLimitTest {
         String code = (String) cls.get("joinCode");
         String url = "/api/learn/staff/classes/" + classId;
 
+        // three children sign up with the class code (no limit yet): all wait
+        Object a = idOf(register(code, "kida")), b = idOf(register(code, "kidb")), c = idOf(register(code, "kidc"));
+
         // only the admin sets the limit
         assertThat(status(url, HttpMethod.PATCH, dana, Map.of("maxStudents", 2))).isEqualTo(403);
         assertThat(status(url, HttpMethod.PATCH, boss, Map.of("maxStudents", 0))).isEqualTo(200); // 0 = no limit
         assertThat(status(url, HttpMethod.PATCH, boss, Map.of("maxStudents", 500))).isEqualTo(400);
         assertThat(status(url, HttpMethod.PATCH, boss, Map.of("maxStudents", 2))).isEqualTo(200);
 
-        // three children sign up with the class code: all wait; the teacher approves 2, the 3rd is refused
-        Object a = idOf(register(code, "kida")), b = idOf(register(code, "kidb")), c = idOf(register(code, "kidc"));
+        // the teacher approves 2, the 3rd is refused
         assertThat(status("/api/learn/staff/children/" + a + "/approve", HttpMethod.POST, dana, null)).isEqualTo(200);
         assertThat(status("/api/learn/staff/children/" + b + "/approve", HttpMethod.POST, dana, null)).isEqualTo(200);
         assertThat(status("/api/learn/staff/children/" + c + "/approve", HttpMethod.POST, dana, null)).isEqualTo(409);
         assertThat(status("/api/learn/staff/children/" + c + "/approve", HttpMethod.POST, boss, null)).isEqualTo(409);
         assertThat(status("/api/learn/admin/children/" + c + "/approve", HttpMethod.POST, boss, null)).isEqualTo(409);
+        // a 4th child can't even sign up: the class is full (Shir: "it blocks him at once")
+        assertThat(http.postForEntity("/api/learn/auth/register", new java.util.HashMap<>(Map.of("joinCode", code, "username", "kidd",
+                "password", "secret12", "name", "kidd", "avatar", "GIRL", "grade", "G3")), Map.class).getStatusCode().value()).isEqualTo(409);
         // the limit can't go below who is already in
         assertThat(status(url, HttpMethod.PATCH, boss, Map.of("maxStudents", 1))).isEqualTo(400);
 
@@ -100,5 +105,23 @@ class ClassLimitTest {
         assertThat(status(url, HttpMethod.PATCH, boss, Map.of("maxStudents", 2))).isEqualTo(200);
         assertThat(status("/api/learn/staff/children/" + a + "/class", HttpMethod.POST, dana, Map.of("classId", classId))).isEqualTo(409);
         assertThat(status("/api/learn/staff/children/" + a + "/class", HttpMethod.POST, boss, Map.of("classId", classId))).isEqualTo(409);
+
+        // the teacher's limit over ALL her classes (a in ג׳2, b+c in ג׳1 = 3) - only the admin sets it
+        String otherCode = (String) ((List<Map<String, Object>>) http.exchange("/api/learn/staff/me", HttpMethod.GET,
+                new HttpEntity<>(as(dana)), Map.class).getBody().get("classes")).stream()
+                .filter(x -> x.get("id").equals(other)).findFirst().orElseThrow().get("joinCode");
+        String turl = "/api/learn/staff/teachers/" + danaId + "/max-students";
+        assertThat(status(turl, HttpMethod.POST, dana, Map.of("maxStudents", 3))).isEqualTo(403);
+        assertThat(status(turl, HttpMethod.POST, boss, Map.of("maxStudents", 2))).isEqualTo(400); // she has 3 already
+        assertThat(status(turl, HttpMethod.POST, boss, Map.of("maxStudents", 3))).isEqualTo(200);
+        java.util.function.Supplier<Integer> signE = () -> http.postForEntity("/api/learn/auth/register",
+                new java.util.HashMap<>(Map.of("joinCode", otherCode, "username", "kide", "password", "secret12", "name", "kide",
+                        "avatar", "GIRL", "grade", "G3")), Map.class).getStatusCode().value();
+        assertThat(signE.get()).as("ג׳2 has room but the teacher is full").isEqualTo(409);
+        Map<String, Object> trow = ((List<Map<String, Object>>) http.exchange("/api/learn/staff/teachers", HttpMethod.GET,
+                new HttpEntity<>(as(boss)), List.class).getBody()).get(0);
+        assertThat(trow).containsEntry("maxStudents", 3).containsEntry("students", 3);
+        assertThat(status(turl, HttpMethod.POST, boss, Map.of("maxStudents", 0))).isEqualTo(200); // no limit
+        assertThat(signE.get()).isEqualTo(201);
     }
 }
