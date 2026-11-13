@@ -111,6 +111,21 @@ public final class Skills {
         NAMES.put("ISL_PAY", "לשלם בדיוק");
         NAMES.put("ISL_COUNT_MONEY", "לספור כסף");
         NAMES.put("ISL_CHANGE", "עודף");
+        // 2026-11-13: the shapes, times and big-numbers islands
+        NAMES.put("ISL_SHAPE_NAME", "זיהוי צורות");
+        NAMES.put("ISL_SOLIDS", "גופים");
+        NAMES.put("ISL_SIDES", "צלעות וקודקודים");
+        NAMES.put("ISL_PATTERN", "תבניות");
+        NAMES.put("ISL_GROUPS", "כפל - קבוצות שוות");
+        NAMES.put("ISL_SHARE", "חילוק - חלוקה שווה");
+        NAMES.put("ISL_SHARE_REM", "חילוק עם שארית");
+        NAMES.put("ISL_ARRAY", "כפל - מערך");
+        NAMES.put("ISL_MISSING_FACTOR", "כפל - גורם חסר");
+        NAMES.put("ISL_PLACE_VALUE", "מאות, עשרות ואחדות");
+        NAMES.put("ISL_DIGIT_VALUE", "ערך הספרה");
+        NAMES.put("ISL_NUMBER_LINE", "ישר המספרים");
+        NAMES.put("ISL_COMPARE_BIG", "השוואת מספרים גדולים");
+        NAMES.put("ISL_ROUND", "עיגול מספרים");
         NAMES.put("OTHER", "אחר");
     }
 
@@ -156,6 +171,24 @@ public final class Skills {
                 return "ISL_PAY";
             case COINS:
                 return stage == 6 ? "ISL_CHANGE" : "ISL_COUNT_MONEY";
+            case SHAPE_NAME:
+                return stage == 6 ? "ISL_SOLIDS" : "ISL_SHAPE_NAME";
+            case SHAPE_SIDES:
+                return "ISL_SIDES";
+            case SHAPE_PATTERN:
+                return "ISL_PATTERN";
+            case GROUPS:
+                return "ISL_GROUPS";
+            case SHARING:
+                return stage == 6 ? "ISL_SHARE_REM" : "ISL_SHARE";
+            case ARRAYS:
+                return stage == 5 ? "ISL_MISSING_FACTOR" : "ISL_ARRAY";
+            case PLACE_VALUE:
+                return stage == 5 ? "ISL_DIGIT_VALUE" : "ISL_PLACE_VALUE";
+            case NUMBER_LINE:
+                return "ISL_NUMBER_LINE";
+            case BIGGER:
+                return stage >= 5 ? "ISL_ROUND" : "ISL_COMPARE_BIG";
             default:
                 break;
         }

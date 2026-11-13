@@ -26,11 +26,24 @@ public enum Topic {
     // 2026-11-12 (Shir: "more islands for grades 1-3"): 🕐 the clock-and-money island.
     CLOCK,
     SHOP,
-    COINS;
+    COINS,
+    // 2026-11-13 (Shir: "the 3 missing islands"): 🔷 shapes (א׳-ג׳), ✖️ times (ב׳-ג׳), 🏰 big numbers (ג׳).
+    SHAPE_NAME,
+    SHAPE_SIDES,
+    SHAPE_PATTERN,
+    GROUPS,
+    SHARING,
+    ARRAYS,
+    PLACE_VALUE,
+    NUMBER_LINE,
+    BIGGER;
 
     /** True for the island mini-games, whose questions are generated client-side. */
     public boolean isGame() {
-        return this == DRAGON || this == BALLOONS || this == BRIDGE || this == TRAIN
-                || this == CLOCK || this == SHOP || this == COINS;
+        return switch (this) {
+            case DRAGON, BALLOONS, BRIDGE, TRAIN, CLOCK, SHOP, COINS,
+                 SHAPE_NAME, SHAPE_SIDES, SHAPE_PATTERN, GROUPS, SHARING, ARRAYS, PLACE_VALUE, NUMBER_LINE, BIGGER -> true;
+            default -> false;
+        };
     }
 }
