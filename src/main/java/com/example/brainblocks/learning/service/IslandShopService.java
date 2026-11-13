@@ -36,8 +36,9 @@ public class IslandShopService {
     }
 
     static {
-        add("house", "home", new String[] {"אוהל", "בית קטן", "בית גדול"}, new int[] {10, 30, 60},
-                new String[] {"מקום לישון באי", "חלונות מוארים וארובה", "קומה שנייה ומרפסת"});
+        // 2026-11-13 (Shir: "a castle, not only a house - a house first, until it can be upgraded to a castle")
+        add("house", "home", new String[] {"אוהל", "בית קטן", "בית גדול", "טירה"}, new int[] {10, 30, 60, 120},
+                new String[] {"מקום לישון באי", "חלונות מוארים וארובה", "קומה שנייה ומרפסת", "חומות, מגדלים ודגלים"});
         add("farm", "food", new String[] {"ערוגת ירקות", "חווה"}, new int[] {15, 40},
                 new String[] {"ירקות צבעוניים", "אסם וגדר"});
         add("stall", "food", new String[] {"דוכן שוק"}, new int[] {20}, new String[] {"פירות ומרקיזה"});
