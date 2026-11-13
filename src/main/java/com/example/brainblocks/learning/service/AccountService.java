@@ -298,7 +298,16 @@ public class AccountService {
         throw new IllegalStateException("no free class code");
     }
 
+    /** 2026-11-13 (Shir): never more than this many accounts waiting for approval - a flood of sign-ups stops here. */
+    public static final int MAX_WAITING = 30;
+
     Session register(String username, String password, String name, String avatar, String grade, String difficulty) {
+        long waiting = repository.findAll().stream().filter(p -> !p.isApproved() && !p.isDisabled() && !p.isAdmin()).count();
+        if (waiting >= MAX_WAITING) {
+            org.slf4j.LoggerFactory.getLogger("brainblocks.signup").warn("sign-up refused: {} accounts already waiting", waiting);
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "יש כרגע הרבה הרשמות שמחכות לאישור. נסו שוב מאוחר יותר");
+        }
         String user = normalize(username);
         if (!USERNAME.matcher(user).matches()) {
             throw bad("שם המשתמש צריך להיות 3 עד 20 אותיות או ספרות, בלי רווחים");

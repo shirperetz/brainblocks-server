@@ -93,6 +93,7 @@ public class LearnController {
     @PostMapping("/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
     public AccountService.Session register(@RequestBody Map<String, String> body) {
+        botCheck(body);
         return accountService.register(body.get("joinCode"), body.get("username"), body.get("password"), body.get("name"),
                 body.get("avatar"), body.get("grade"), body.get("difficulty"));
     }
@@ -101,7 +102,32 @@ public class LearnController {
     @PostMapping("/auth/register-teacher")
     @ResponseStatus(HttpStatus.CREATED)
     public AccountService.Session registerTeacher(@RequestBody Map<String, String> body) {
+        botCheck(body);
         return accountService.registerTeacher(body.get("username"), body.get("password"), body.get("name"));
+    }
+
+    /**
+     * 2026-11-13 (Shir: "protection against bots that sign up by themselves in a loop"): the sign-up form
+     * has a hidden field ("website") a person never sees - a bot fills it; and the form reports how long
+     * it was open ("formMs") - a person needs more than 3 seconds. (An old page without formMs passes.)
+     */
+    static void botCheck(Map<String, String> body) {
+        String trap = body.get("website");
+        if (trap != null && !trap.isBlank()) {
+            org.slf4j.LoggerFactory.getLogger("brainblocks.signup").warn("sign-up refused: bot trap filled");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ההרשמה לא הצליחה");
+        }
+        String ms = body.get("formMs");
+        if (ms != null) {
+            try {
+                if (Long.parseLong(ms.trim()) < 3000) {
+                    org.slf4j.LoggerFactory.getLogger("brainblocks.signup").warn("sign-up refused: form filled in {} ms", ms);
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "רגע, לאט לאט 🙂 נסו שוב");
+                }
+            } catch (NumberFormatException ignored) {
+                // not a number - ignore
+            }
+        }
     }
 
     @PostMapping("/auth/login")

@@ -150,6 +150,7 @@ class AccountServiceTest {
                     case "findByUsername" -> db.stream().filter(p -> args[0].equals(p.getUsername())).findFirst();
                     case "findByAuthToken" -> db.stream().filter(p -> args[0].equals(p.getAuthToken())).findFirst();
                     case "existsByUsername" -> db.stream().anyMatch(p -> args[0].equals(p.getUsername()));
+                    case "findAll" -> new ArrayList<>(db);
                     case "toString" -> "repo";
                     case "hashCode" -> 1;
                     case "equals" -> proxy == args[0];

@@ -135,6 +135,9 @@ public class PublicAccessConfig implements WebMvcConfigurer {
         return remote;
     }
 
+    @org.springframework.beans.factory.annotation.Value("${brainblocks.rounds-per-minute:6}")
+    private int roundsPerMinute = 6;
+
     @Bean
     FilterRegistrationBean<OncePerRequestFilter> publicLimits() {
         // 2026-11-13 (Shir chose): a whole class signs up from ONE school address - 5 an hour stopped it after
@@ -152,6 +155,12 @@ public class PublicAccessConfig implements WebMvcConfigurer {
         // A room polls every 2 s per child (30 children = 900/min from one school address): its own allowance.
         Limiter room = new Limiter(4000, MINUTE);
         Limiter guestJoin = new Limiter(40, 10 * MINUTE);  // guests joining rooms, per address
+        // 2026-11-13 (Shir: "protection against scripts answering in a loop to collect stars"): per LOGIN,
+        // so many children behind one school address don't block each other. A real child can't finish
+        // more than ~6 rounds a minute or answer more than one question a second.
+        Limiter rounds = new Limiter(roundsPerMinute, MINUTE); // rounds submitted per child (default 6)
+        Limiter answers = new Limiter(60, MINUTE);         // single answers checked per child
+        Limiter perChild = new Limiter(400, MINUTE);       // every call per child
         Clock clock = Clock.systemUTC();
         OncePerRequestFilter filter = new OncePerRequestFilter() {
             private long lastCleanup;
@@ -164,7 +173,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                     long now = clock.millis();
                     if (now - lastCleanup > 10 * MINUTE) {
                         lastCleanup = now;
-                        for (Limiter l : new Limiter[] {register, login, ai, speech, all, room, guestJoin}) {
+                        for (Limiter l : new Limiter[] {register, login, ai, speech, all, room, guestJoin, rounds, answers, perChild}) {
                             l.cleanup(now);
                         }
                     }
@@ -181,6 +190,13 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                             && (!post || !path.equals("/api/learn/auth/login") || login.allow(who, now))
                             && (!post || !path.equals("/api/learn/help") || ai.allow(who, now))
                             && (!post || !path.equals("/api/learn/speak") || speech.allow(who, now));
+                    String token = req.getHeader("X-Learner-Token");
+                    if (ok && token != null && !token.isBlank()) {
+                        String child = "t:" + Integer.toHexString(token.hashCode()) + token.length();
+                        ok = perChild.allow(child, now)
+                                && (!post || !path.endsWith("/sessions") || rounds.allow(child, now))
+                                && (!post || !path.endsWith("/answer") || answers.allow(child, now));
+                    }
                     if (!ok) {
                         res.setStatus(429);
                         res.setContentType("application/json;charset=UTF-8");

@@ -24,7 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
         "DATABASE_URL=jdbc:h2:mem:weekly;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
         "DATABASE_USER=sa", "DATABASE_PASSWORD=",
         "JOIN_CODE=4711", "ADMIN_USERNAMES=boss", "PUBLIC_ORIGIN=https://example.org",
-        "server.port=0"})
+        "server.port=0", "brainblocks.rounds-per-minute=1000"})
 @ActiveProfiles("cloud")
 class WeeklyAssignmentTest {
 
