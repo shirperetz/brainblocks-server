@@ -273,7 +273,7 @@ public class LearnController {
 
     /** A short explanation of one question from the local AI, or the game's own hint. Never the answer. */
     @PostMapping("/help")
-    public Map<String, String> help(@RequestBody HelpRequest r,
+    public Map<String, Object> help(@RequestBody HelpRequest r,
                                     @RequestAttribute(value = LearnerAuthConfig.ATTRIBUTE, required = false) Long me) {
         // 2026-11-12: the phone no longer has the right answer - take it from the bank (own questions only).
         if (r.getBankId() != null && me != null) {
@@ -285,7 +285,19 @@ public class LearnController {
         int attempt = r.getAttempt() != null ? r.getAttempt() : r.isAgain() ? 1 : 0;
         HelpService.Help h = helpService.explain(r.getQuestionText(), r.getCorrectAnswer(), r.getChosenAnswer(),
                 r.getGrade(), attempt, r.getFallbackHint());
-        return Map.of("text", h.text(), "source", h.source());
+        // 2026-11-13 (Shir: explanations without tokens): first press after a wrong answer - a sentence
+        // about THIS mistake; and a drawing of the question (both from code, free, never the answer).
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        String text = h.text();
+        if (attempt == 0) {
+            String m = com.example.brainblocks.learning.ai.MistakeHint.forMistake(r.getQuestionText(), r.getCorrectAnswer(), r.getChosenAnswer());
+            if (m != null) text = "💡 " + m + "\n" + text;
+        }
+        out.put("text", text);
+        out.put("source", h.source());
+        Map<String, Object> visual = com.example.brainblocks.learning.ai.MistakeHint.visual(r.getQuestionText());
+        if (visual != null) out.put("visual", visual);
+        return out;
     }
 
     /** The help text read aloud (WAV) for children who can't read yet; 204 when no voice is available. */
