@@ -111,10 +111,18 @@ public class LearnController {
      * has a hidden field ("website") a person never sees - a bot fills it; and the form reports how long
      * it was open ("formMs") - a person needs more than 3 seconds. (An old page without formMs passes.)
      */
+    private static com.example.brainblocks.learning.service.PhoneAlerts botAlerts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setBotAlerts(com.example.brainblocks.learning.service.PhoneAlerts a) {
+        botAlerts = a;
+    }
+
     static void botCheck(Map<String, String> body) {
         String trap = body.get("website");
         if (trap != null && !trap.isBlank()) {
             org.slf4j.LoggerFactory.getLogger("brainblocks.signup").warn("sign-up refused: bot trap filled");
+            if (botAlerts != null) botAlerts.send("bot-trap", "בוט ניסה להירשם לאתר ונחסם");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ההרשמה לא הצליחה");
         }
         String ms = body.get("formMs");

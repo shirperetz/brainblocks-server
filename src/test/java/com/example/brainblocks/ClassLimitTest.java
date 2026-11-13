@@ -123,5 +123,11 @@ class ClassLimitTest {
         assertThat(trow).containsEntry("maxStudents", 3).containsEntry("students", 3);
         assertThat(status(turl, HttpMethod.POST, boss, Map.of("maxStudents", 0))).isEqualTo(200); // no limit
         assertThat(signE.get()).isEqualTo(201);
+
+        // 2026-11-13: the activity log saw the changes, with who made them; a teacher can't read it
+        List<Map<String, Object>> log = http.exchange("/api/learn/admin/audit", HttpMethod.GET, new HttpEntity<>(as(boss)), List.class).getBody();
+        assertThat(log).extracting(m -> (String) m.get("path")).anyMatch(x -> x.contains("/max-students"));
+        assertThat(log).extracting(m -> (String) m.get("actor")).contains("boss", "dana");
+        assertThat(status("/api/learn/admin/audit", HttpMethod.GET, dana, null)).isIn(403, 404);
     }
 }

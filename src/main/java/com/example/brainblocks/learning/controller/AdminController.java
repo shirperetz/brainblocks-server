@@ -80,6 +80,16 @@ public class AdminController {
     }
 
     /** body: { password, username? } - username only for an old profile without one (or to rename). */
+    /** 2026-11-13: the log of the staff's changes (admin only). */
+    @GetMapping("/audit")
+    public java.util.List<Map<String, Object>> audit(@RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        requireAdmin(me);
+        return auditService.recent();
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.brainblocks.learning.service.AuditService auditService;
+
     @PostMapping("/children/{id}/password")
     public ProfileResponse setPassword(@PathVariable Long id, @RequestBody Map<String, String> body,
                                        @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {

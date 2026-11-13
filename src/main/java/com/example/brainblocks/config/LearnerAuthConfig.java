@@ -29,6 +29,12 @@ public class LearnerAuthConfig implements WebMvcConfigurer {
     private String adminNetwork = "log";
     private volatile String lastAdminFrom = "";
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.brainblocks.learning.service.PhoneAlerts alerts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.brainblocks.learning.service.AuditService audit;
+
     /** This computer, or a Tailscale address (100.64.0.0/10, fd7a:115c:a1e0::/48). */
     static boolean ownDevice(String ip) {
         if (ip == null) return false;
@@ -65,6 +71,8 @@ public class LearnerAuthConfig implements WebMvcConfigurer {
                     if (!ownDevice(from)) {
                         org.slf4j.LoggerFactory.getLogger("brainblocks.admin").warn("admin request from outside her devices: {} {} (mode {})",
                                 from, request.getRequestURI(), adminNetwork);
+                        if (alerts != null) alerts.send("admin-outside", "ניסיון להשתמש בחשבון המנהלת מכתובת שאינה שלך: " + from
+                                + ("on".equals(adminNetwork) ? " - נחסם" : ""));
                         if ("on".equals(adminNetwork)) {
                             response.sendError(HttpServletResponse.SC_FORBIDDEN);
                             return false;
@@ -75,6 +83,17 @@ public class LearnerAuthConfig implements WebMvcConfigurer {
                     }
                 }
                 return true;
+            }
+            @Override
+            public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+                // 2026-11-13 (Shir: security - "a log of who did what"): every change made through the
+                // staff / admin screens that succeeded.
+                String path = request.getRequestURI();
+                if (audit == null || "GET".equals(request.getMethod()) || "OPTIONS".equals(request.getMethod())) return;
+                if (!(path.startsWith("/api/learn/staff/") || path.startsWith("/api/learn/admin/"))) return;
+                if (response.getStatus() >= 400) return;
+                Object who = request.getAttribute(ATTRIBUTE);
+                if (who instanceof Long id) audit.record(id, request.getMethod(), path);
             }
         }).addPathPatterns("/api/learn/**").excludePathPatterns("/api/learn/auth/**", "/api/learn/room-guest/**");
         // 2026-11-12: a game-room guest has no account - RoomGuestController checks its own per-room token.

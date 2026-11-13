@@ -135,6 +135,9 @@ public class PublicAccessConfig implements WebMvcConfigurer {
         return remote;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.brainblocks.learning.service.PhoneAlerts alerts;
+
     @org.springframework.beans.factory.annotation.Value("${brainblocks.rounds-per-minute:6}")
     private int roundsPerMinute = 6;
 
@@ -198,6 +201,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                                 && (!post || !path.endsWith("/answer") || answers.allow(child, now));
                     }
                     if (!ok) {
+                        if (alerts != null) alerts.send("rate-" + who, "הרבה מאוד בקשות מכתובת " + who + " - הוגבלה לכמה דקות (" + path + ")");
                         res.setStatus(429);
                         res.setContentType("application/json;charset=UTF-8");
                         res.getWriter().write("{\"message\":\"יותר מדי בקשות. נסו שוב בעוד כמה דקות\"}");

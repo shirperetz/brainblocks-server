@@ -191,6 +191,12 @@ public class AccountService {
     }
 
     private SeatsService seats;
+    private PhoneAlerts alerts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAlerts(PhoneAlerts alerts) {
+        this.alerts = alerts;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setSeats(SeatsService seats) {
@@ -248,6 +254,7 @@ public class AccountService {
         LearnerProfile p = profileService.findProfile(s.profile().getId());
         p.setTeacher(true);
         repository.save(p);
+        if (alerts != null) alerts.send("teacher-" + p.getId(), "מורה חדשה נרשמה: " + p.getName() + " (@" + p.getUsername() + ") - מחכה לאישור שלך");
         return new Session(s.token(), ProfileResponse.fromEntity(p));
     }
 
@@ -304,6 +311,7 @@ public class AccountService {
     Session register(String username, String password, String name, String avatar, String grade, String difficulty) {
         long waiting = repository.findAll().stream().filter(p -> !p.isApproved() && !p.isDisabled() && !p.isAdmin()).count();
         if (waiting >= MAX_WAITING) {
+            if (alerts != null) alerts.send("waiting-full", "יש כבר " + waiting + " הרשמות שמחכות לאישור - הרשמות חדשות נעצרו עד שתאשרי");
             org.slf4j.LoggerFactory.getLogger("brainblocks.signup").warn("sign-up refused: {} accounts already waiting", waiting);
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "יש כרגע הרבה הרשמות שמחכות לאישור. נסו שוב מאוחר יותר");
@@ -345,8 +353,12 @@ public class AccountService {
         }
         Optional<LearnerProfile> found = repository.findByUsername(user);
         if (found.isEmpty() || password == null || !matches(password, found.get().getPasswordHash())) {
-            failures.merge(user, new Failures(1, now), (old, one) ->
+            Failures after = failures.merge(user, new Failures(1, now), (old, one) ->
                     now.isAfter(old.since().plus(LOCK)) ? one : new Failures(old.count() + 1, old.since()));
+            if (alerts != null && after.count() == MAX_FAILURES) {
+                alerts.send("login-lock", "5 ניסיונות כניסה שגויים לשם המשתמש \"" + user + "\" - ננעל ל-5 דקות"
+                        + (found.map(LearnerProfile::isAdmin).orElse(false) ? " (זה חשבון המנהלת!)" : ""));
+            }
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "שם המשתמש או הסיסמה לא נכונים");
         }
         failures.remove(user);
