@@ -53,7 +53,7 @@ public class IslandShopService {
     }
 
     public static final int OPEN_SLOTS = 8;
-    public static final int MAX_SLOTS = 16;
+    public static final int MAX_SLOTS = 32; // 2026-11-13 (Shir filled all 16: "there is nothing more to build")
     public static final int CHEST_COINS = 20;
 
     /** The n-th piece of land (0, 1, ...) costs this; each opens 2 more places. */
