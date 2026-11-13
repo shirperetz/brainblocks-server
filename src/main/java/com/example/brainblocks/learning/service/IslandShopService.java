@@ -248,8 +248,13 @@ public class IslandShopService {
         List<Map<String, Object>> isleList = new ArrayList<>();
         for (int i = 0; i < count; i++) isleList.add(Map.of("index", i, "season", seasonOf(i), "name", isleName(i)));
         out.put("isles", isleList);
-        // the next island opens when the newest one is at its full size
-        boolean lastFull = OPEN_SLOTS + landsOn(mine, count - 1) * 2 >= MAX_SLOTS;
+        // 2026-11-13 (Shir: "until the whole island is built, another one doesn't open"): the newest
+        // island must be at its full size AND have something built on every one of its places.
+        int lastIsle = count - 1;
+        long builtOnLast = mine.stream().filter(it -> CATALOG.containsKey(it.getKind()) && isleOf(it) == lastIsle).count();
+        boolean lastFull = OPEN_SLOTS + landsOn(mine, lastIsle) * 2 >= MAX_SLOTS && builtOnLast >= MAX_SLOTS;
+        out.put("lastIsleBuilt", builtOnLast);
+        out.put("lastIsleName", isleName(lastIsle));
         out.put("nextIsle", lastFull
                 ? Map.of("index", count, "season", seasonOf(count), "name", isleName(count), "cost", isleCost(count))
                 : null);
@@ -359,7 +364,7 @@ public class IslandShopService {
     public Map<String, Object> buyIsle(Long profileId) {
         Map<String, Object> st = state(profileId, 0);
         Map<String, Object> next = (Map<String, Object>) st.get("nextIsle");
-        if (next == null) throw bad("קודם מגדילים את האי האחרון עד הסוף");
+        if (next == null) throw bad("קודם בונים את כל האי האחרון - כל 32 המקומות");
         if (((Number) st.get("coins")).intValue() < ((Number) next.get("cost")).intValue()) throw poor();
         int n = ((Number) next.get("index")).intValue();
         items.save(new LearnIslandItem(profileId, "isle", n, 1));

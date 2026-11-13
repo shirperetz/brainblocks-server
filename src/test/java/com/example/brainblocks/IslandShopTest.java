@@ -151,6 +151,14 @@ class IslandShopTest {
         for (int i = 0; i < 12; i++) assertThat(post(kid, k, "land", Map.of()).getStatusCode().value()).isEqualTo(200);
         s = state(kid, k);
         assertThat(s).containsEntry("openSlots", 32);
+        // all 32 places open but only one built: no new island yet (Shir: "until the whole island is built")
+        assertThat(s.get("nextIsle")).isNull();
+        assertThat(post(kid, k, "new-isle", Map.of()).getStatusCode().value()).isEqualTo(400);
+        for (int i = 0; i < 32; i++) {
+            if (i != 3) assertThat(post(kid, k, "build", Map.of("slot", i, "kind", "flowers")).getStatusCode().value()).isEqualTo(200);
+        }
+        s = state(kid, k);
+        assertThat(s).containsEntry("lastIsleBuilt", 32);
         Map<String, Object> next = (Map<String, Object>) s.get("nextIsle");
         assertThat(next).containsEntry("index", 1).containsEntry("season", "snow").containsEntry("cost", 150);
         int before = (Integer) s.get("coins");
@@ -167,7 +175,7 @@ class IslandShopTest {
         r = post(kid, k, "build", Map.of("isle", 1, "slot", 3, "kind", "house"));
         assertThat(r.getBody()).containsEntry("coins", before - 150 - 13);
         // island 0 still has its own tent; an island she does not own is refused
-        assertThat((List<?>) state(kid, k).get("buildings")).hasSize(1);
+        assertThat((List<?>) state(kid, k).get("buildings")).hasSize(32);
         assertThat(post(kid, k, "build", Map.of("isle", 2, "slot", 0, "kind", "tree")).getStatusCode().value()).isEqualTo(400);
         // taking down on island 1 gives back 13
         r = post(kid, k, "remove", Map.of("isle", 1, "slot", 3));
