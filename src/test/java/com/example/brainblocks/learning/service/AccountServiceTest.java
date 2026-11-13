@@ -192,4 +192,14 @@ class AccountServiceTest {
         assertThatThrownBy(() -> a.register("", "eli", "1234", "אלי", "ROBOT", null, null)).hasMessageContaining("קוד ההצטרפות");
         assertThat(a.isAdmin(id)).isFalse(); // only the database makes an admin
     }
+
+    /** 2026-11-13: staff see many children - at least 10 characters (a child: 4). */
+    @org.junit.jupiter.api.Test
+    void staffPasswordsAreLonger() {
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> AccountService.checkStaffPassword("secret12"));
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> AccountService.checkStaffPassword(null));
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> AccountService.checkStaffPassword("secret1234"));
+    }
 }

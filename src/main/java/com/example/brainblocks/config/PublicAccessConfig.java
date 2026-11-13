@@ -108,6 +108,15 @@ public class PublicAccessConfig implements WebMvcConfigurer {
 
     static final long MINUTE = 60_000;
 
+    /**
+     * Only the site's own scripts; inline styles (React style attributes) and the Rubik font from Google
+     * Fonts; audio/images from the site, data: and blob: (the read-aloud WAVs are object URLs).
+     */
+    static final String CSP = "default-src 'self'; script-src 'self'; "
+            + "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
+            + "img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self'; "
+            + "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
     /** The visitor's address: Funnel's X-Forwarded-For only when the request came over loopback. */
     static String visitor(HttpServletRequest r) {
         return visitor(r, false);
@@ -118,7 +127,10 @@ public class PublicAccessConfig implements WebMvcConfigurer {
         boolean loopback = "127.0.0.1".equals(remote) || "0:0:0:0:0:0:0:1".equals(remote) || "::1".equals(remote);
         String fwd = r.getHeader("X-Forwarded-For");
         if ((loopback || trustForwarded) && fwd != null && !fwd.isBlank()) {
-            return fwd.split(",")[0].trim();
+            // 2026-11-13: the LAST address is the one our proxy added; earlier ones are whatever the
+            // visitor sent (Funnel overwrites today - checked live - but never trust a visitor's list).
+            String[] parts = fwd.split(",");
+            return parts[parts.length - 1].trim();
         }
         return remote;
     }
@@ -177,6 +189,12 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                 res.setHeader("X-Content-Type-Options", "nosniff");
                 res.setHeader("Referrer-Policy", "no-referrer");
                 res.setHeader("X-Frame-Options", "DENY");
+                // 2026-11-13 (Shir: "security so nobody can break in"): even if hostile text ever reached a
+                // page, the browser runs only this site's own scripts; nothing can frame it; HTTPS only.
+                res.setHeader("Content-Security-Policy", CSP);
+                res.setHeader("Strict-Transport-Security", "max-age=31536000");
+                res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
+                res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
                 chain.doFilter(req, res);
             }
         };

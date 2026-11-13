@@ -23,7 +23,8 @@ class PublicAccessConfigTest {
     void forwardedAddressIsTrustedOnlyFromLoopback() {
         var viaFunnel = new MockHttpServletRequest();
         viaFunnel.setRemoteAddr("127.0.0.1");
-        viaFunnel.addHeader("X-Forwarded-For", "203.0.113.7, 10.0.0.1");
+        // 2026-11-13: a visitor may send their own list; the proxy adds the real address LAST.
+        viaFunnel.addHeader("X-Forwarded-For", "9.9.9.9, 203.0.113.7");
         assertThat(PublicAccessConfig.visitor(viaFunnel)).isEqualTo("203.0.113.7");
 
         var direct = new MockHttpServletRequest();

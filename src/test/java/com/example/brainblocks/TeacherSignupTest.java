@@ -50,16 +50,16 @@ class TeacherSignupTest {
         String boss = (String) post("/api/learn/auth/register", Map.of("joinCode", "4711", "username", "boss", "password", "secret12", "name", "שיר", "avatar", "GIRL", "grade", "G6")).get("token");
 
         // No code: she is a teacher, waiting - no token, can't log in yet.
-        Map<String, Object> t = post("/api/learn/auth/register-teacher", Map.of("username", "dana", "password", "secret12", "name", "דנה"));
+        Map<String, Object> t = post("/api/learn/auth/register-teacher", Map.of("username", "dana", "password", "secret1234", "name", "דנה"));
         Map<String, Object> profile = (Map<String, Object>) t.get("profile");
         assertThat(profile).containsEntry("teacher", true).containsEntry("approved", false);
         assertThat(t.get("token")).isNull();
-        assertThat(status("/api/learn/auth/login", HttpMethod.POST, null, Map.of("username", "dana", "password", "secret12"))).isEqualTo(403);
-        assertThat(status("/api/learn/auth/register-teacher", HttpMethod.POST, null, Map.of("username", "dana", "password", "secret12", "name", "שוב"))).isEqualTo(409);
+        assertThat(status("/api/learn/auth/login", HttpMethod.POST, null, Map.of("username", "dana", "password", "secret1234"))).isEqualTo(403);
+        assertThat(status("/api/learn/auth/register-teacher", HttpMethod.POST, null, Map.of("username", "dana", "password", "secret1234", "name", "שוב"))).isEqualTo(409);
 
         // The admin approves her; now she logs in and has a classes screen.
         assertThat(status("/api/learn/staff/teachers/" + profile.get("id") + "/approve", HttpMethod.POST, boss, null)).isEqualTo(200);
-        String dana = (String) post("/api/learn/auth/login", Map.of("username", "dana", "password", "secret12")).get("token");
+        String dana = (String) post("/api/learn/auth/login", Map.of("username", "dana", "password", "secret1234")).get("token");
         assertThat(status("/api/learn/staff/me", HttpMethod.GET, dana, null)).isEqualTo(200);
 
         // Her class, her child; Shir's own child (no class) is not hers.

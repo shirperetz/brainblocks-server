@@ -156,7 +156,8 @@ public class AccountService {
         if (current == null || !matches(current, p.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הסיסמה הנוכחית לא נכונה");
         }
-        checkPassword(next);
+        if (p.isTeacher() || p.isAdmin()) checkStaffPassword(next);
+        else checkPassword(next);
         p.setPasswordHash(hash(next));
         p.setAuthToken(newToken());
         repository.save(p);
@@ -228,6 +229,7 @@ public class AccountService {
      * and sees nothing until then.
      */
     public Session registerTeacher(String username, String password, String name) {
+        checkStaffPassword(password);
         Session s = register(username, password, name, "ROBOT", null, null);
         LearnerProfile p = profileService.findProfile(s.profile().getId());
         p.setTeacher(true);
@@ -389,6 +391,19 @@ public class AccountService {
     private static void checkPassword(String password) {
         if (password == null || password.length() < MIN_PASSWORD || password.length() > MAX_PASSWORD) {
             throw bad("הסיסמה צריכה להיות לפחות " + MIN_PASSWORD + " תווים");
+        }
+    }
+
+    /**
+     * 2026-11-13 (Shir: "security so nobody can break in"): a teacher or the admin sees many children -
+     * their password must be longer than a child's (a 4-character one is guessed fast).
+     */
+    static final int MIN_STAFF_PASSWORD = 10;
+
+    static void checkStaffPassword(String password) {
+        checkPassword(password);
+        if (password.length() < MIN_STAFF_PASSWORD) {
+            throw bad("למורים ולמנהלים: סיסמה של לפחות " + MIN_STAFF_PASSWORD + " תווים");
         }
     }
 
