@@ -83,11 +83,13 @@ public class AdminTreeController {
                 cm.put("name", c.getName());
                 cm.put("grade", c.getGrade());
                 cm.put("closed", c.isClosed());
+                cm.put("maxStudents", c.getMaxStudents()); // 2026-11-13 (Shir: "the number, so I know how many")
                 cm.put("children", children(all.stream()
                         .filter(p -> !p.isTeacher() && !p.isAdmin() && c.getId().equals(p.getClassId())).toList()));
                 cls.add(cm);
             }
             tm.put("classes", cls);
+            tm.put("maxStudents", t.getMaxStudents());
             tm.put("childCount", cls.stream().mapToInt(c -> ((List<?>) c.get("children")).size()).sum());
             teachers.add(tm);
         }
