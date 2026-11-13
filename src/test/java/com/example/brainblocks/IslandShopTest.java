@@ -175,4 +175,18 @@ class IslandShopTest {
         // the farm now has 3 levels
         assertThat(((List<Integer>) ((List<Map<String, Object>>) r.getBody().get("catalog")).get(1).get("costs"))).hasSize(3);
     }
+
+    @Test
+    void theDailyChallengePaysAndEveryThirdDayInARowGivesABonus() {
+        java.time.LocalDate d = java.time.LocalDate.of(2026, 11, 1);
+        assertThat(com.example.brainblocks.learning.service.IslandShopService.dailyCoins(List.of())).isZero();
+        assertThat(com.example.brainblocks.learning.service.IslandShopService.dailyCoins(List.of(d))).isEqualTo(5);
+        // 3 days in a row: 5+5+(5+10)
+        assertThat(com.example.brainblocks.learning.service.IslandShopService.dailyCoins(List.of(d, d.plusDays(1), d.plusDays(2)))).isEqualTo(25);
+        // a gap starts the run again: 1,2 | 4,5,6 -> 5+5 + 5+5+15
+        assertThat(com.example.brainblocks.learning.service.IslandShopService.dailyCoins(
+                List.of(d, d.plusDays(1), d.plusDays(3), d.plusDays(4), d.plusDays(5)))).isEqualTo(35);
+        // the same day twice counts once
+        assertThat(com.example.brainblocks.learning.service.IslandShopService.dailyCoins(List.of(d, d))).isEqualTo(5);
+    }
 }

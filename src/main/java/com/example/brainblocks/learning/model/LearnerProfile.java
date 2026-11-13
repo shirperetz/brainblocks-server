@@ -161,6 +161,12 @@ public class LearnerProfile {
     /** The child's class (learn_class.id); null = Shir's own children (no class yet). */
     private Long classId;
 
+    /** 2026-11-13: a child with an account asked to join this class (its code) - waits for its teacher. */
+    private Long pendingClassId;
+
+    public Long getPendingClassId() { return pendingClassId; }
+    public void setPendingClassId(Long pendingClassId) { this.pendingClassId = pendingClassId; }
+
     public boolean isTeacher() { return "TEACHER".equals(role); }
     public void setTeacher(boolean teacher) { this.role = teacher ? "TEACHER" : null; }
     public Long getClassId() { return classId; }

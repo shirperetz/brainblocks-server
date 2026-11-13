@@ -8,4 +8,6 @@ import java.util.List;
 public interface LearnAssignmentRepository extends JpaRepository<LearnAssignment, Long> {
 
     List<LearnAssignment> findByClassIdOrderByStartDateDescIdDesc(Long classId);
+
+    List<LearnAssignment> findByChildIdOrderByStartDateDescIdDesc(Long childId);
 }

@@ -121,13 +121,47 @@ public class IslandShopService {
     private final LearnerStageProgressRepository stages;
     private final LearnIsleProgressRepository isleProgress;
     private final IsleService isles;
+    private final com.example.brainblocks.learning.repository.LearnerSessionRepository sessions;
 
     public IslandShopService(LearnIslandItemRepository items, LearnerStageProgressRepository stages,
-                             LearnIsleProgressRepository isleProgress, IsleService isles) {
+                             LearnIsleProgressRepository isleProgress, IsleService isles,
+                             com.example.brainblocks.learning.repository.LearnerSessionRepository sessions) {
         this.items = items;
         this.stages = stages;
         this.isleProgress = isleProgress;
         this.isles = isles;
+        this.sessions = sessions;
+    }
+
+    /*
+     * 2026-11-13 (Shir chose "a daily task and a streak"): the daily challenge pays coins - 5 for every
+     * day it was done, and +10 more on every 3rd day in a row (3, 6, 9...). Counted from the saved
+     * rounds, so nothing new is stored.
+     */
+    public static final int DAILY_COINS = 5;
+    public static final int STREAK_BONUS = 10;
+
+    public static int dailyCoins(java.util.Collection<java.time.LocalDate> days) {
+        java.util.List<java.time.LocalDate> sorted = new java.util.ArrayList<>(new java.util.TreeSet<>(days));
+        int coins = 0;
+        int run = 0;
+        java.time.LocalDate prev = null;
+        for (java.time.LocalDate d : sorted) {
+            run = prev != null && prev.plusDays(1).equals(d) ? run + 1 : 1;
+            coins += DAILY_COINS + (run % 3 == 0 ? STREAK_BONUS : 0);
+            prev = d;
+        }
+        return coins;
+    }
+
+    private java.util.Set<java.time.LocalDate> dailyDays(Long profileId) {
+        java.util.Set<java.time.LocalDate> days = new java.util.HashSet<>();
+        for (var s : sessions.findByProfileId(profileId)) {
+            if (s.getMode() == com.example.brainblocks.learning.model.SessionMode.DAILY && s.getCreatedAt() != null) {
+                days.add(s.getCreatedAt().toLocalDate());
+            }
+        }
+        return days;
     }
 
     private int earnedStars(Long profileId) {
@@ -203,7 +237,9 @@ public class IslandShopService {
         int open = Math.min(MAX_SLOTS, OPEN_SLOTS + lands * 2);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("stars", stars);
-        out.put("coins", stars + chests * CHEST_COINS + bonus - spent);
+        int daily = dailyCoins(dailyDays(profileId));
+        out.put("dailyCoins", daily);
+        out.put("coins", stars + chests * CHEST_COINS + bonus + daily - spent);
         out.put("openSlots", open);
         out.put("maxSlots", MAX_SLOTS);
         out.put("nextLandCost", open >= MAX_SLOTS ? null : price(landCost(lands), isle));

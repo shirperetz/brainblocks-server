@@ -85,7 +85,7 @@ public class AssignmentService {
         }
         LocalDate today = LocalDate.now();
         long running = assignments.findByClassIdOrderByStartDateDescIdDesc(c.getId()).stream()
-                .filter(a -> a.isActiveOn(today)).count();
+                .filter(a -> a.getChildId() == null && a.isActiveOn(today)).count();
         if (running >= MAX_ACTIVE) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "כבר יש " + MAX_ACTIVE + " משימות פעילות לכיתה - אפשר לבטל אחת");
@@ -97,7 +97,8 @@ public class AssignmentService {
         LearnerProfile v = access.requireStaff(me);
         LearnAssignment a = assignments.findById(assignmentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין משימה כזו"));
-        ownClass(v, a.getClassId());
+        if (a.getChildId() != null) access.requireCanSee(me, a.getChildId()); // a child's own task
+        else ownClass(v, a.getClassId());
         a.setCancelled(true);
         assignments.save(a);
     }
@@ -117,7 +118,7 @@ public class AssignmentService {
 
         List<Map<String, Object>> out = new ArrayList<>();
         for (LearnAssignment a : assignments.findByClassIdOrderByStartDateDescIdDesc(c.getId())) {
-            if (a.isCancelled() || a.getEndDate().isBefore(today.minusDays(HISTORY_DAYS))) continue;
+            if (a.getChildId() != null || a.isCancelled() || a.getEndDate().isBefore(today.minusDays(HISTORY_DAYS))) continue;
             Map<String, Object> m = describe(a, today);
             List<Map<String, Object>> rows = new ArrayList<>();
             int finished = 0;
@@ -143,14 +144,70 @@ public class AssignmentService {
 
     /** The running tasks of the child's class, with its own progress. A child without a class: none. */
     public List<Map<String, Object>> forChild(LearnerProfile child) {
-        if (child.getClassId() == null) return List.of();
         LocalDate today = LocalDate.now();
         List<LearnerSession> mine = sessions.findByProfileId(child.getId());
         List<Map<String, Object>> out = new ArrayList<>();
-        for (LearnAssignment a : assignments.findByClassIdOrderByStartDateDescIdDesc(child.getClassId())) {
+        // her own tasks first ("just for you"), then the class's
+        for (LearnAssignment a : assignments.findByChildIdOrderByStartDateDescIdDesc(child.getId())) {
             if (!a.isActiveOn(today)) continue;
             Map<String, Object> m = describe(a, today);
             m.put("done", done(mine, a));
+            out.add(m);
+        }
+        if (child.getClassId() == null) return out;
+        for (LearnAssignment a : assignments.findByClassIdOrderByStartDateDescIdDesc(child.getClassId())) {
+            if (a.getChildId() != null || !a.isActiveOn(today)) continue;
+            Map<String, Object> m = describe(a, today);
+            m.put("done", done(mine, a));
+            out.add(m);
+        }
+        return out;
+    }
+
+    // ---- a task for one child (2026-11-13, "practice this" from the report) ----
+
+    public static final int MAX_PERSONAL = 2;
+
+    public Map<String, Object> createForChild(Long me, Long childId, Object rawTopic, Object rawRounds, Object rawDays) {
+        LearnerProfile v = access.requireStaff(me);
+        access.requireCanSee(me, childId);
+        LearnerProfile child = profiles.findById(childId).filter(p -> !p.isTeacher() && !p.isAdmin())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין ילד כזה"));
+        Topic topic = topic(rawTopic);
+        if (!GradeTopics.allowed(topic, child.getGrade())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "הנושא לא שייך לכיתה של הילד");
+        }
+        int rounds = number(rawRounds, 2, 1, MAX_ROUNDS, "מספר סבבים: 1 עד " + MAX_ROUNDS);
+        int days = number(rawDays, 3, 1, MAX_DAYS, "משך: 1 עד " + MAX_DAYS + " ימים");
+        LocalDate today = LocalDate.now();
+        List<LearnAssignment> running = assignments.findByChildIdOrderByStartDateDescIdDesc(childId).stream()
+                .filter(a -> a.isActiveOn(today)).toList();
+        if (running.stream().anyMatch(a -> a.getTopic() == topic)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "כבר יש לו תרגול פתוח בנושא הזה");
+        }
+        if (running.size() >= MAX_PERSONAL) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "כבר יש " + MAX_PERSONAL + " תרגולים אישיים פתוחים - אפשר לבטל אחד");
+        }
+        LearnAssignment a = new LearnAssignment(child.getClassId() == null ? 0L : child.getClassId(), topic, rounds,
+                today, today.plusDays(days - 1L), v.getId());
+        a.setChildId(childId);
+        a = assignments.save(a);
+        Map<String, Object> m = describe(a, today);
+        m.put("done", 0);
+        return m;
+    }
+
+    /** The child's own tasks (running + the last 4 weeks), for her report. */
+    public List<Map<String, Object>> personalOf(Long me, Long childId) {
+        access.requireStaff(me);
+        access.requireCanSee(me, childId);
+        LocalDate today = LocalDate.now();
+        List<LearnerSession> theirs = sessions.findByProfileId(childId);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (LearnAssignment a : assignments.findByChildIdOrderByStartDateDescIdDesc(childId)) {
+            if (a.isCancelled() || a.getEndDate().isBefore(today.minusDays(HISTORY_DAYS))) continue;
+            Map<String, Object> m = describe(a, today);
+            m.put("done", done(theirs, a));
             out.add(m);
         }
         return out;
@@ -161,6 +218,7 @@ public class AssignmentService {
         m.put("id", a.getId());
         m.put("topic", a.getTopic());
         m.put("rounds", a.getRounds());
+        m.put("personal", a.getChildId() != null);
         m.put("startDate", a.getStartDate().toString());
         m.put("endDate", a.getEndDate().toString());
         boolean active = a.isActiveOn(today);

@@ -53,6 +53,16 @@ public class LearnAssignment {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * 2026-11-13 (Shir: "practice from the report"): a task for ONE child (the teacher taps "practice
+     * this" next to a mistake in the child's report). null = the whole class. classId is then the
+     * child's class, or 0 for a child of no class.
+     */
+    private Long childId;
+
+    public Long getChildId() { return childId; }
+    public void setChildId(Long childId) { this.childId = childId; }
+
     protected LearnAssignment() {}
 
     public LearnAssignment(Long classId, Topic topic, int rounds, LocalDate startDate, LocalDate endDate, Long createdBy) {

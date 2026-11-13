@@ -259,6 +259,19 @@ public class StaffController {
         return accounts.approve(id);
     }
 
+    // 2026-11-13 (Shir: "practice from the report"): a short task for this child only
+    @GetMapping("/children/{id}/practice")
+    public List<Map<String, Object>> practice(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return assignments.personalOf(me, id);
+    }
+
+    /** body: { topic, rounds? (2), days? (3) } */
+    @PostMapping("/children/{id}/practice")
+    public Map<String, Object> givePractice(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                            @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return assignments.createForChild(me, id, body.get("topic"), body.get("rounds"), body.get("days"));
+    }
+
     @PostMapping("/children/{id}/disabled")
     public ProfileResponse disabled(@PathVariable Long id, @RequestBody Map<String, Boolean> body,
                                     @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {

@@ -137,7 +137,9 @@ public class PublicAccessConfig implements WebMvcConfigurer {
 
     @Bean
     FilterRegistrationBean<OncePerRequestFilter> publicLimits() {
-        Limiter register = new Limiter(5, 60 * MINUTE);   // new children per address per hour
+        // 2026-11-13 (Shir chose): a whole class signs up from ONE school address - 5 an hour stopped it after
+        // 5 children. 40 an hour fits a class; every new account still waits for the admin / its teacher.
+        Limiter register = new Limiter(40, 60 * MINUTE);  // new accounts per address per hour
         // 2026-11-12 (the live game room): a whole class logs in from ONE school address at the start of a
         // lesson - 20 per 10 minutes would lock children out. Guessing passwords is still stopped per
         // user (5 wrong -> 5 minutes, AccountService).
