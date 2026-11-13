@@ -88,11 +88,17 @@ class InfiniteIslesTest {
 
     @Test
     void eachGradeHasItsOwnChainAndItsGeneratedIslesUseOnlyItsGames() {
-        assertThat(IsleService.chain(Grade.G1)).extracting(IsleService.Isle::key).containsExactly("numbers", "clock", "shapes");
-        assertThat(IsleService.chain(Grade.G2)).extracting(IsleService.Isle::key).containsExactly("numbers", "clock", "shapes", "times");
-        assertThat(IsleService.chain(Grade.G3)).extracting(IsleService.Isle::key).containsExactly("clock", "shapes", "times", "big");
+        assertThat(IsleService.chain(Grade.G1)).extracting(IsleService.Isle::key).containsExactly("numbers", "clock", "shapes",
+                "t-addition", "t-subtraction", "t-comparison", "t-sequences");
+        assertThat(IsleService.chain(Grade.G2)).extracting(IsleService.Isle::key).containsExactly("numbers", "clock", "shapes", "times", "t-addition", "t-subtraction", "t-multiplication", "t-division", "t-comparison", "t-sequences");
+        assertThat(IsleService.chain(Grade.G3)).extracting(IsleService.Isle::key).startsWith("clock", "shapes", "times", "big", "t-addition")
+                .contains("t-fractions", "t-angles", "t-perimeter");
         assertThat(IsleService.chain(null)).hasSize(5);
-        assertThat(IsleService.chain(Grade.G5)).hasSize(5);
+        // ד׳-ו׳: no game islands, one island per topic, every topic of the grade has one
+        assertThat(IsleService.chain(Grade.G4)).extracting(IsleService.Isle::key).contains("t-fractions", "t-area", "t-word_problems")
+                .doesNotContain("numbers", "shapes");
+        assertThat(IsleService.chain(Grade.G6)).extracting(IsleService.Isle::key).contains("t-angle_calc", "t-area").hasSizeGreaterThanOrEqualTo(10);
+        for (int n = 1; n <= 20; n++) assertThat(IsleService.generated(n, Grade.G5).games()).allMatch(t -> !t.isGame()).hasSize(3);
         Set<Topic> g1 = new HashSet<>();
         IsleService.chain(Grade.G1).forEach(i -> g1.addAll(i.games()));
         for (int n = 1; n <= 30; n++) {
@@ -138,29 +144,35 @@ class InfiniteIslesTest {
         pass(kid, Topic.SHAPE_NAME, 6);
         pass(kid, Topic.SHAPE_SIDES, 6);
         s = sea(kid, k);
-        assertThat(s).extracting(m -> m.get("key")).containsExactly("numbers", "clock", "shapes", "times", "gen-1");
+        assertThat(s).extracting(m -> m.get("key")).containsExactly("numbers", "clock", "shapes", "times", "t-addition");
         assertThat(s.get(3)).containsEntry("open", true);
         pass(kid, Topic.GROUPS, 6);
-        pass(kid, Topic.SHARING, 5); // 11 of 18 - one short
+        pass(kid, Topic.SHARING, 6);
+        pass(kid, Topic.ARRAYS, 6);
+        // then one island per topic of ב׳ (4 of 6 stages opens the next)
+        for (Topic t : List.of(Topic.ADDITION, Topic.SUBTRACTION, Topic.MULTIPLICATION, Topic.DIVISION, Topic.COMPARISON)) pass(kid, t, 4);
+        pass(kid, Topic.SEQUENCES, 3); // one short
         s = sea(kid, k);
-        assertThat(s).extracting(m -> m.get("key")).containsExactly("numbers", "clock", "shapes", "times", "gen-1");
-        assertThat(s.get(4)).containsEntry("open", false).containsEntry("generated", true);
-        // gen-1 of a ב׳ child: only ב׳ games
-        for (Map<String, Object> g : (List<Map<String, Object>>) s.get(4).get("games")) {
+        assertThat(s).extracting(m -> m.get("key")).containsExactly("numbers", "clock", "shapes", "times", "t-addition", "t-subtraction", "t-multiplication", "t-division", "t-comparison", "t-sequences", "gen-1");
+        assertThat(s.get(10)).containsEntry("open", false).containsEntry("generated", true);
+        // gen-1 of a ב׳ child: only ב׳ games and topics
+        for (Map<String, Object> g : (List<Map<String, Object>>) s.get(10).get("games")) {
             assertThat(Topic.valueOf((String) g.get("topic"))).isNotIn(Topic.PLACE_VALUE, Topic.NUMBER_LINE, Topic.BIGGER);
         }
 
         // A locked island takes no rounds.
-        Map<String, Object> g1 = s.get(4);
+        Map<String, Object> g1 = s.get(10);
         String g1Topic = (String) ((List<Map<String, Object>>) g1.get("games")).get(0).get("topic");
         assertThat(submit(kid, k, "gen-1", g1Topic, 1, 9)).isEqualTo(403);
 
         // times: 3 games x 6 = 18, opens gen-1 at 12 (already 12 above? no: GROUPS+SHARING = 12 -> open).
-        pass(kid, Topic.ARRAYS, 1);
+        LearnerStageProgress fourth = new LearnerStageProgress(kid, Topic.SEQUENCES, 4, StageStatus.UNLOCKED);
+        fourth.recordAttempt(90, 3, true);
+        stages.save(fourth);
         s = sea(kid, k);
-        assertThat(s).extracting(m -> m.get("key")).containsExactly("numbers", "clock", "shapes", "times", "gen-1", "gen-2");
-        assertThat(s.get(4)).containsEntry("open", true);
-        assertThat(s.get(5)).containsEntry("open", false);
+        assertThat(s).extracting(m -> m.get("key")).containsExactly("numbers", "clock", "shapes", "times", "t-addition", "t-subtraction", "t-multiplication", "t-division", "t-comparison", "t-sequences", "gen-1", "gen-2");
+        assertThat(s.get(10)).containsEntry("open", true);
+        assertThat(s.get(11)).containsEntry("open", false);
         // A ב׳ child can't post to the big-numbers island (not in her sea).
         assertThat(submit(kid, k, "big", "BIGGER", 1, 9)).isEqualTo(404);
 
@@ -172,7 +184,7 @@ class InfiniteIslesTest {
         assertThat(submit(kid, k, "gen-1", g1Topic, 1, 9)).isEqualTo(200);
         long after = answers.findAll().stream().filter(a -> a.getProfileId().equals(kid)).count();
         assertThat(after - before).isEqualTo(10);
-        Map<String, Object> g1Now = sea(kid, k).get(4);
+        Map<String, Object> g1Now = sea(kid, k).get(10);
         Map<String, Object> firstGame = ((List<Map<String, Object>>) g1Now.get("games")).get(0);
         List<Map<String, Object>> st = (List<Map<String, Object>>) firstGame.get("stages");
         assertThat(st.get(0)).containsEntry("status", "COMPLETED").containsEntry("stars", 3);

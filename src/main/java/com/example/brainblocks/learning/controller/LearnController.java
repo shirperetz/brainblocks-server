@@ -160,8 +160,10 @@ public class LearnController {
                                                @RequestParam(defaultValue = "1") int stage,
                                                @RequestParam(defaultValue = "10") int count,
                                                @RequestParam(defaultValue = "false") boolean secure,
+                                               @RequestParam(defaultValue = "0") int tier,
                                                @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         own(profileId, me);
+        stage = Math.min(Math.max(stage, 1), 6);
         LearnerProfile profile = profileService.findProfile(profileId);
         int clamped = Math.min(Math.max(count, 1), 20);
         Topic t = parseTopic(topic);
@@ -172,6 +174,12 @@ public class LearnController {
         // 2026-11-12 (idea #3): one level harder after >=90% right in this topic, easier after <=50%.
         var history = answerRepository.findByProfileId(profileId);
         var difficulty = com.example.brainblocks.learning.service.AdaptiveDifficulty.forTopic(profile.getDifficulty(), t, history);
+        // 2026-11-13 (endless islands): a generated island asks the hardest level of the child's own grade
+        // (the generator never leaves the grade's number range - harder, not another grade's material).
+        if (tier > 0) {
+            difficulty = com.example.brainblocks.learning.model.Difficulty.HARD;
+            stage = Math.min(6, stage + Math.min(tier, 20) - 1); // each island further on starts a level higher
+        }
         // 2026-11-12 (Shir: "always different exercises"): not the ones answered right lately in this topic.
         java.util.Set<String> recentRight = history.stream()
                 .filter(a -> a.isCorrect() && a.getTopic() == t && a.getQuestionText() != null)

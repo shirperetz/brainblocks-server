@@ -67,10 +67,44 @@ public class IsleService {
             "times", EnumSet.of(Grade.G2, Grade.G3),
             "big", EnumSet.of(Grade.G3));
 
-    /** The base islands of this grade, in order. */
+    /**
+     * 2026-11-13 (Shir: "an island for every topic, endless for ד׳-ו׳ too"): after the game islands,
+     * one island for each topic of the child's grade (played in the regular question screen; its
+     * stages are the topic's own stage map, so progress already made counts).
+     */
+    private static final Map<Topic, String[]> TOPIC_ISLES = new java.util.LinkedHashMap<>();
+    static {
+        TOPIC_ISLES.put(Topic.ADDITION, new String[] {"אי החיבור", "+", "#25c685"});
+        TOPIC_ISLES.put(Topic.SUBTRACTION, new String[] {"אי החיסור", "−", "#4aa8ff"});
+        TOPIC_ISLES.put(Topic.MULTIPLICATION, new String[] {"אי הכפל", "×", "#a77bff"});
+        TOPIC_ISLES.put(Topic.DIVISION, new String[] {"אי החילוק", "÷", "#ff9f43"});
+        TOPIC_ISLES.put(Topic.COMPARISON, new String[] {"אי ההשוואה", "<>", "#ff6fb5"});
+        TOPIC_ISLES.put(Topic.SEQUENCES, new String[] {"אי הסדרות", "1,2,3", "#14b8c4"});
+        TOPIC_ISLES.put(Topic.WORD_PROBLEMS, new String[] {"אי הסיפורים", "?!", "#f2b705"});
+        TOPIC_ISLES.put(Topic.FRACTIONS, new String[] {"אי השברים", "½", "#e0533d"});
+        TOPIC_ISLES.put(Topic.ANGLES, new String[] {"אי הזוויות", "∠", "#7a5af8"});
+        TOPIC_ISLES.put(Topic.ANGLE_CALC, new String[] {"אי חישוב הזוויות", "°", "#2fbf71"});
+        TOPIC_ISLES.put(Topic.PERIMETER, new String[] {"אי ההיקף", "▭", "#ff5f8f"});
+        TOPIC_ISLES.put(Topic.AREA, new String[] {"אי השטח", "■", "#4aa8ff"});
+    }
+
+    /** The key of a topic island ("t-fractions"). */
+    public static String topicKey(Topic t) {
+        return "t-" + t.name().toLowerCase();
+    }
+
+    /** The base islands of this grade, in order: its game islands, then one island per topic. */
     public static List<Isle> chain(Grade grade) {
-        if (grade != Grade.G1 && grade != Grade.G2 && grade != Grade.G3) return BASE;
-        return BASE.stream().filter(b -> GRADES.get(b.key()).contains(grade)).toList();
+        List<Isle> out = new ArrayList<>();
+        boolean small = grade == Grade.G1 || grade == Grade.G2 || grade == Grade.G3;
+        if (grade == null) return BASE; // no grade chosen yet: the game islands
+        if (small) for (Isle b : BASE) if (GRADES.get(b.key()).contains(grade)) out.add(b);
+        for (Map.Entry<Topic, String[]> e : TOPIC_ISLES.entrySet()) {
+            if (!GradeTopics.allowed(e.getKey(), grade)) continue;
+            String[] v = e.getValue();
+            out.add(new Isle(topicKey(e.getKey()), v[0], v[1], v[2], 0, List.of(e.getKey())));
+        }
+        return out;
     }
 
     private static final String[] GEN_NAMES = {"אי ההרפתקאות", "אי האוצר", "אי הכוכבים", "אי הענקים", "אי הקשת",
@@ -124,6 +158,8 @@ public class IsleService {
     private final LearnerProfileRepository profiles;
     private final LearnerSessionRepository sessions;
     private final LearnerAnswerRepository answers;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.brainblocks.learning.repository.LearnQuestionRepository bank;
 
     public IsleService(LearnerStageProgressRepository stages, LearnIsleProgressRepository isleProgress,
                        LearnerProfileRepository profiles, LearnerSessionRepository sessions, LearnerAnswerRepository answers) {
@@ -257,6 +293,21 @@ public class IsleService {
         if ("LOCKED".equals(st.get(stage - 1).get("status"))) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "השלב עוד נעול");
 
         LearnerProfile profile = profiles.findById(profileId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        // 2026-11-13: a question topic (not a game) is judged from the bank - the phone's "right" is ignored.
+        if (!topic.isGame()) {
+            for (AnswerDto a : list) {
+                var q = a.getBankId() == null || bank == null ? null : bank.findById(a.getBankId()).filter(x -> x.getProfileId().equals(profileId)).orElse(null);
+                if (q == null) {
+                    a.setCorrect(false);
+                    continue;
+                }
+                String chosen = q.getChosenAnswer() != null ? q.getChosenAnswer() : a.getChosenAnswer();
+                a.setChosenAnswer(chosen);
+                a.setCorrectAnswer(q.getCorrectAnswer());
+                a.setCorrect(q.getCorrectAnswer().equals(chosen));
+                if (a.getQuestionText() == null) a.setQuestionText(q.getText());
+            }
+        }
         int total = list.size();
         int right = (int) list.stream().filter(AnswerDto::isCorrect).count();
         int pct = (int) Math.round(right * 100.0 / total);
