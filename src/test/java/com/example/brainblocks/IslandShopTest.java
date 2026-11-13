@@ -108,6 +108,11 @@ class IslandShopTest {
         r = post(kid, k, "land", Map.of());
         assertThat(r.getBody()).containsEntry("openSlots", 10).containsEntry("coins", 7);
         assertThat(post(kid, k, "build", Map.of("slot", 9, "kind", "flowers")).getStatusCode().value()).isEqualTo(200);
+        // taking a building down gives its coins back (flowers 4 -> 7 again), the place is free again
+        r = post(kid, k, "remove", Map.of("slot", 9));
+        assertThat(r.getBody()).containsEntry("coins", 7);
+        assertThat(post(kid, k, "remove", Map.of("slot", 9)).getStatusCode().value()).isEqualTo(400);
+        assertThat(post(kid, k, "build", Map.of("slot", 9, "kind", "flowers")).getStatusCode().value()).isEqualTo(200);
 
         // finishing the numbers island (16 of 24) gave a treasure chest: +20, once
         List<Map<String, Object>> chests = (List<Map<String, Object>>) state(kid, k).get("chests");

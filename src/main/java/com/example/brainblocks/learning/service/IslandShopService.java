@@ -48,6 +48,8 @@ public class IslandShopService {
         add("palm", "decor", new String[] {"דקל"}, new int[] {6}, new String[] {"חוף טרופי"});
         add("flowers", "decor", new String[] {"ערוגת פרחים"}, new int[] {4}, new String[] {"צבע ליד הבית"});
         add("boat", "transport", new String[] {"סירת מפרש"}, new int[] {30}, new String[] {"סירה ליד החוף"});
+        add("ship", "transport", new String[] {"ספינה", "ספינת מפרשים גדולה"}, new int[] {80, 150},
+                new String[] {"ספינה עם תורן ומפרשים", "שני תרנים ודגל"});
     }
 
     public static final int OPEN_SLOTS = 8;
@@ -192,6 +194,16 @@ public class IslandShopService {
         if (((Number) state(profileId).get("coins")).intValue() < k.costs()[it.getLevel()]) throw poor();
         it.levelUp();
         items.save(it);
+        return state(profileId);
+    }
+
+    /** Takes a building down so something else can stand there; what it cost comes back in full. */
+    @Transactional
+    public Map<String, Object> remove(Long profileId, int slot) {
+        LearnIslandItem it = items.findByProfileId(profileId).stream()
+                .filter(i -> i.getSlot() == slot && CATALOG.containsKey(i.getKind())).findFirst()
+                .orElseThrow(() -> bad("אין כאן מבנה"));
+        items.delete(it);
         return state(profileId);
     }
 

@@ -55,6 +55,13 @@ public class IslandShopController {
         return shop.upgrade(id, slotOf(body));
     }
 
+    @PostMapping("/api/learn/profiles/{id}/my-island/remove")
+    public Map<String, Object> remove(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                      @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        mine(id, me);
+        return shop.remove(id, slotOf(body));
+    }
+
     @PostMapping("/api/learn/profiles/{id}/my-island/land")
     public Map<String, Object> land(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         mine(id, me);
