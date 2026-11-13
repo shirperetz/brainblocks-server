@@ -269,6 +269,11 @@ public class IslandShopService {
                 bonus += it.getLevel();
                 continue;
             }
+            // 2026-11-14 (A5): coins given to the class building - spent, nothing on the island.
+            if (it.getKind().startsWith("donate:")) {
+                spent += it.getLevel();
+                continue;
+            }
             if (it.getKind().startsWith("chest:")) {
                 chests++;
                 opened.add(it.getKind().substring(6));

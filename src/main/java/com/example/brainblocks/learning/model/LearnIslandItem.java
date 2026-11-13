@@ -59,6 +59,9 @@ public class LearnIslandItem {
         updatedAt = LocalDateTime.now();
     }
 
+    /** 2026-11-14 (A5): a week's donation row grows with each gift. */
+    public void setLevel(int level) { this.level = level; }
+
     public Long getId() { return id; }
     public Long getProfileId() { return profileId; }
     public String getKind() { return kind; }

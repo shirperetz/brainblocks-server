@@ -427,6 +427,16 @@ public class LearnController {
         return b == null ? Map.of() : b;
     }
 
+    /** 2026-11-14 (A5): body { coins } - from the child's island to its class's building this week. */
+    @PostMapping("/profiles/{id}/class-building/donate")
+    public Map<String, Object> donateToBuilding(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me,
+                                                @RequestBody Map<String, Object> body) {
+        own(id, me);
+        Object c = body.get("coins");
+        int coins = c instanceof Number n ? n.intValue() : 0;
+        return classBuilding.donate(profileService.findProfile(id), coins);
+    }
+
     private Topic parseTopic(String value) {
         try {
             return Topic.valueOf(value.trim().toUpperCase());
