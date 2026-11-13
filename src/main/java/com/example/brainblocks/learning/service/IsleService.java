@@ -1,6 +1,7 @@
 package com.example.brainblocks.learning.service;
 
 import com.example.brainblocks.learning.dto.request.AnswerDto;
+import com.example.brainblocks.learning.model.Grade;
 import com.example.brainblocks.learning.model.LearnIsleProgress;
 import com.example.brainblocks.learning.model.LearnerAnswer;
 import com.example.brainblocks.learning.model.LearnerProfile;
@@ -20,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,18 +49,45 @@ public class IsleService {
     /** The hand-built islands, in the order they open (the not-built ones are added here when ready). */
     static final List<Isle> BASE = List.of(
             new Isle("numbers", "אי המספרים", "1-20", "#25c685", 0, List.of(Topic.DRAGON, Topic.BALLOONS, Topic.BRIDGE, Topic.TRAIN)),
-            new Isle("clock", "אי השעון והכסף", "12:00", "#ff9f43", 0, List.of(Topic.CLOCK, Topic.SHOP, Topic.COINS)));
+            new Isle("clock", "אי השעון והכסף", "12:00", "#ff9f43", 0, List.of(Topic.CLOCK, Topic.SHOP, Topic.COINS)),
+            // 2026-11-13 (Shir: "the 3 missing islands")
+            new Isle("shapes", "אי הצורות", "▲●■", "#4aa8ff", 0, List.of(Topic.SHAPE_NAME, Topic.SHAPE_SIDES, Topic.SHAPE_PATTERN)),
+            new Isle("times", "אי הכפל והחילוק", "×÷", "#a77bff", 0, List.of(Topic.GROUPS, Topic.SHARING, Topic.ARRAYS)),
+            new Isle("big", "אי המספרים הגדולים", "1000", "#ff6fb5", 0, List.of(Topic.PLACE_VALUE, Topic.NUMBER_LINE, Topic.BIGGER)));
+
+    /**
+     * 2026-11-13 (Shir): who each base island is made for. An island not for the child's grade is not
+     * in their chain at all (it doesn't block them), and their generated islands use only their games.
+     * No grade / ד׳ and up: every island.
+     */
+    private static final Map<String, Set<Grade>> GRADES = Map.of(
+            "numbers", EnumSet.of(Grade.G1, Grade.G2),
+            "clock", EnumSet.of(Grade.G1, Grade.G2, Grade.G3),
+            "shapes", EnumSet.of(Grade.G1, Grade.G2, Grade.G3),
+            "times", EnumSet.of(Grade.G2, Grade.G3),
+            "big", EnumSet.of(Grade.G3));
+
+    /** The base islands of this grade, in order. */
+    public static List<Isle> chain(Grade grade) {
+        if (grade != Grade.G1 && grade != Grade.G2 && grade != Grade.G3) return BASE;
+        return BASE.stream().filter(b -> GRADES.get(b.key()).contains(grade)).toList();
+    }
 
     private static final String[] GEN_NAMES = {"אי ההרפתקאות", "אי האוצר", "אי הכוכבים", "אי הענקים", "אי הקשת",
             "אי הר הגעש", "אי הפנינים", "אי הסודות", "אי הרוח", "אי הדרקונים"};
     private static final String[] GEN_MARKS = {"★", "◆", "✦", "▲", "●", "■", "♥", "✚", "☾", "☀"};
     private static final String[] GEN_COLORS = {"#4aa8ff", "#a77bff", "#ff6fb5", "#2fbf71", "#ff9f43", "#e0533d", "#14b8c4", "#7a5af8", "#f2b705", "#ff5f8f"};
 
-    /** Generated island N (1, 2, ...): always the same for the same N. */
+    /** Generated island N (1, 2, ...), every grade's games: always the same for the same N. */
     public static Isle generated(int n) {
+        return generated(n, null);
+    }
+
+    /** Generated island N for a grade: only that grade's games; always the same for the same N and grade. */
+    public static Isle generated(int n, Grade grade) {
         if (n < 1) throw new IllegalArgumentException("n");
         List<Topic> pool = new ArrayList<>();
-        for (Isle b : BASE) pool.addAll(b.games());
+        for (Isle b : chain(grade)) pool.addAll(b.games());
         List<Topic> games = new ArrayList<>(3);
         int start = ((n - 1) * 3) % pool.size();
         for (int i = 0; games.size() < 3 && i < pool.size(); i++) {
@@ -72,9 +102,14 @@ public class IsleService {
 
     /** The island with this key, or null. */
     public static Isle byKey(String key) {
+        return byKey(key, null);
+    }
+
+    /** The island with this key in this grade's sea, or null (also a base island of another grade). */
+    public static Isle byKey(String key, Grade grade) {
         if (key == null) return null;
-        for (Isle b : BASE) if (b.key().equals(key)) return b;
-        if (key.matches("gen-[1-9]\\d{0,4}")) return generated(Integer.parseInt(key.substring(4)));
+        for (Isle b : chain(grade)) if (b.key().equals(key)) return b;
+        if (key.matches("gen-[1-9]\\d{0,4}")) return generated(Integer.parseInt(key.substring(4)), grade);
         return null;
     }
 
@@ -135,12 +170,14 @@ public class IsleService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> sea(Long profileId) {
+        Grade grade = profiles.findById(profileId).map(LearnerProfile::getGrade).orElse(null);
+        List<Isle> mine = chain(grade);
         List<LearnerStageProgress> base = stages.findByProfileId(profileId);
         List<LearnIsleProgress> gen = isleProgress.findByProfileId(profileId);
         List<Map<String, Object>> isles = new ArrayList<>();
         boolean open = true;
         for (int i = 0; ; i++) {
-            Isle isle = i < BASE.size() ? BASE.get(i) : generated(i - BASE.size() + 1);
+            Isle isle = i < mine.size() ? mine.get(i) : generated(i - mine.size() + 1, grade);
             Map<Topic, Map<Integer, int[]>> p = progressOf(isle, base, gen);
             int passed = passedCount(p);
             isles.add(view(isle, p, passed, open));
@@ -195,7 +232,8 @@ public class IsleService {
     /** A finished round on a generated island: the stage's result + every answer, all kept. */
     @Transactional
     public Map<String, Object> submit(Long profileId, String isleKey, String rawTopic, int stage, List<AnswerDto> list, long durationMs) {
-        Isle isle = byKey(isleKey);
+        LearnerProfile owner = profiles.findById(profileId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Isle isle = byKey(isleKey, owner.getGrade());
         if (isle == null || isle.tier() == 0) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "אין אי כזה");
         Topic topic;
         try {
