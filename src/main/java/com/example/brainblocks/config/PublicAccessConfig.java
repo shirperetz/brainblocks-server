@@ -146,6 +146,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
         // 2026-11-13 (Shir chose): a whole class signs up from ONE school address - 5 an hour stopped it after
         // 5 children. 40 an hour fits a class; every new account still waits for the admin / its teacher.
         Limiter register = new Limiter(40, 60 * MINUTE);  // new accounts per address per hour
+        Limiter contact = new Limiter(5, 60 * MINUTE);    // 2026-11-14: messages to the site's operator per address per hour
         // 2026-11-12 (the live game room): a whole class logs in from ONE school address at the start of a
         // lesson - 20 per 10 minutes would lock children out. Guessing passwords is still stopped per
         // user (5 wrong -> 5 minutes, AccountService).
@@ -176,7 +177,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                     long now = clock.millis();
                     if (now - lastCleanup > 10 * MINUTE) {
                         lastCleanup = now;
-                        for (Limiter l : new Limiter[] {register, login, ai, speech, all, room, guestJoin, rounds, answers, perChild}) {
+                        for (Limiter l : new Limiter[] {register, contact, login, ai, speech, all, room, guestJoin, rounds, answers, perChild}) {
                             l.cleanup(now);
                         }
                     }
@@ -191,6 +192,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                             && (!post || !path.equals("/api/learn/room-guest/join") || guestJoin.allow(who, now))
                             && (!post || !path.startsWith("/api/learn/auth/register") || register.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/login") || login.allow(who, now))
+                            && (!post || !path.equals("/api/learn/auth/contact") || contact.allow(who, now))
                             && (!post || !path.equals("/api/learn/help") || ai.allow(who, now))
                             && (!post || !path.equals("/api/learn/speak") || speech.allow(who, now));
                     String token = req.getHeader("X-Learner-Token");

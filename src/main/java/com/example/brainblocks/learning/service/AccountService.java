@@ -203,6 +203,20 @@ public class AccountService {
         this.seats = seats;
     }
 
+    /** 2026-11-14: the consent given at sign-up (see LearnController.consentCheck). */
+    public void markConsent(Long id, boolean given) {
+        if (!given || id == null) return;
+        repository.findById(id).ifPresent(p -> {
+            p.setConsentAt(java.time.LocalDateTime.now());
+            repository.save(p);
+        });
+    }
+
+    /** 2026-11-14: the account's own password, to confirm a deletion request. */
+    public boolean passwordOk(Long id, String password) {
+        return password != null && repository.findById(id).map(p -> p.getPasswordHash() != null && matches(password, p.getPasswordHash())).orElse(false);
+    }
+
     public boolean isAdmin(Long id) {
         return id != null && repository.findById(id).map(LearnerProfile::isAdmin).orElse(false);
     }

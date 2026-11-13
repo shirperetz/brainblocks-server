@@ -217,6 +217,17 @@ public class LearnerProfile {
     public String getCompanion() { return companion; }
     public void setCompanion(String companion) { this.companion = companion; }
 
+    /** 2026-11-14 (privacy): when the parent's consent (a child) / the privacy policy (a teacher) was given at sign-up. */
+    private java.time.LocalDateTime consentAt;
+
+    /** 2026-11-14 (privacy): the account asked to be deleted (waits for the admin), null = no request. */
+    private java.time.LocalDateTime deletionRequestedAt;
+
+    public java.time.LocalDateTime getConsentAt() { return consentAt; }
+    public void setConsentAt(java.time.LocalDateTime consentAt) { this.consentAt = consentAt; }
+    public java.time.LocalDateTime getDeletionRequestedAt() { return deletionRequestedAt; }
+    public void setDeletionRequestedAt(java.time.LocalDateTime at) { this.deletionRequestedAt = at; }
+
     public String getIslandJson() { return islandJson; }
     public void setIslandJson(String islandJson) { this.islandJson = islandJson; }
 }

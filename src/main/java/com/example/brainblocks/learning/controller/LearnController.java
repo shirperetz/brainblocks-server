@@ -94,8 +94,11 @@ public class LearnController {
     @ResponseStatus(HttpStatus.CREATED)
     public AccountService.Session register(@RequestBody Map<String, String> body) {
         botCheck(body);
-        return accountService.register(body.get("joinCode"), body.get("username"), body.get("password"), body.get("name"),
+        consentCheck(body, "parentConsent", "צריך שהורה יאשר את ההרשמה - מסמנים את התיבה למטה");
+        AccountService.Session s = accountService.register(body.get("joinCode"), body.get("username"), body.get("password"), body.get("name"),
                 body.get("avatar"), body.get("grade"), body.get("difficulty"));
+        accountService.markConsent(s.profile().getId(), "yes".equals(body.get("parentConsent")));
+        return s;
     }
 
     /** 2026-11-12: "מורה" at sign-up - no code, waits for Shir's approval. body: { username, password, name } */
@@ -103,7 +106,10 @@ public class LearnController {
     @ResponseStatus(HttpStatus.CREATED)
     public AccountService.Session registerTeacher(@RequestBody Map<String, String> body) {
         botCheck(body);
-        return accountService.registerTeacher(body.get("username"), body.get("password"), body.get("name"));
+        consentCheck(body, "privacyAccepted", "צריך לאשר את מדיניות הפרטיות - מסמנים את התיבה למטה");
+        AccountService.Session s = accountService.registerTeacher(body.get("username"), body.get("password"), body.get("name"));
+        accountService.markConsent(s.profile().getId(), "yes".equals(body.get("privacyAccepted")));
+        return s;
     }
 
     /**
@@ -116,6 +122,17 @@ public class LearnController {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setBotAlerts(com.example.brainblocks.learning.service.PhoneAlerts a) {
         botAlerts = a;
+    }
+
+    /**
+     * 2026-11-14 (privacy, Shir: items 1-4 before going public): the sign-up form sends the parent's
+     * consent (a child) / the privacy policy (a teacher) with formMs - a form that sends formMs without it
+     * is refused. (Like botCheck: a request without formMs - an old page - passes.)
+     */
+    static void consentCheck(Map<String, String> body, String field, String message) {
+        if (body.get("formMs") != null && !"yes".equals(body.get(field))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        }
     }
 
     static void botCheck(Map<String, String> body) {

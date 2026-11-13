@@ -48,7 +48,7 @@ class AntiBotTest {
         // the hidden field filled, or the form sent after 1 second -> refused; a person -> fine
         assertThat(signUp("bot1", Map.of("website", "http://spam"))).isEqualTo(400);
         assertThat(signUp("bot2", Map.of("formMs", "900"))).isEqualTo(400);
-        assertThat(signUp("kid1", Map.of("website", "", "formMs", "12000"))).isEqualTo(201);
+        assertThat(signUp("kid1", Map.of("website", "", "formMs", "12000", "parentConsent", "yes"))).isEqualTo(201);
         assertThat(http.postForEntity("/api/learn/auth/register-teacher",
                 Map.of("username", "botteach", "password", "secret12345", "name", "x", "website", "x"), Map.class)
                 .getStatusCode().value()).isEqualTo(400);
