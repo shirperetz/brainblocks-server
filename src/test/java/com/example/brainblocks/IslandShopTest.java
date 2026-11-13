@@ -40,7 +40,7 @@ class IslandShopTest {
     @SuppressWarnings("unchecked")
     private Map<String, Object> register(String user, String boss) {
         Map<String, Object> body = new HashMap<>(Map.of("joinCode", "4711", "username", user, "password", "secret12",
-                "name", user, "avatar", "GIRL", "grade", "G2"));
+                "name", user, "avatar", "GIRL", "grade", "G1"));
         Map<String, Object> r = http.postForObject("/api/learn/auth/register", body, Map.class);
         Long id = ((Number) ((Map<String, Object>) r.get("profile")).get("id")).longValue();
         if (boss != null) http.exchange("/api/learn/staff/children/" + id + "/approve", HttpMethod.POST, new HttpEntity<>(as(boss)), String.class);

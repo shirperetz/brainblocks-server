@@ -106,9 +106,16 @@ public class IslandShopService {
         int chests = 0;
         int spent = 0;
         int lands = 0;
+        int bonus = 0;
         List<Map<String, Object>> buildings = new ArrayList<>();
         Set<String> opened = new HashSet<>();
         for (LearnIslandItem it : mine) {
+            // 2026-11-13 (Shir: "a million coins, only for me, to test"): coins given by hand in the DB
+            // (kind "bonus", level = how many). No route creates one.
+            if (it.getKind().equals("bonus")) {
+                bonus += it.getLevel();
+                continue;
+            }
             if (it.getKind().startsWith("chest:")) {
                 chests++;
                 opened.add(it.getKind().substring(6));
@@ -128,7 +135,7 @@ public class IslandShopService {
         int open = Math.min(MAX_SLOTS, OPEN_SLOTS + lands * 2);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("stars", stars);
-        out.put("coins", stars + chests * CHEST_COINS - spent);
+        out.put("coins", stars + chests * CHEST_COINS + bonus - spent);
         out.put("openSlots", open);
         out.put("maxSlots", MAX_SLOTS);
         out.put("nextLandCost", open >= MAX_SLOTS ? null : landCost(lands));

@@ -61,7 +61,7 @@ public class IsleService {
      * No grade / ד׳ and up: every island.
      */
     private static final Map<String, Set<Grade>> GRADES = Map.of(
-            "numbers", EnumSet.of(Grade.G1, Grade.G2),
+            "numbers", EnumSet.of(Grade.G1), // 2026-11-13 (Shir): counting to 20 is א׳ only - ב׳ starts at the clock
             "clock", EnumSet.of(Grade.G1, Grade.G2, Grade.G3),
             "shapes", EnumSet.of(Grade.G1, Grade.G2, Grade.G3),
             "times", EnumSet.of(Grade.G2, Grade.G3),
