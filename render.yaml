@@ -1,0 +1,30 @@
+# 2026-11-14 - Render "Blueprint" for the public math game (free plan only - Shir: "no money at all").
+# One web service: the pages + the server. The database is Neon (free), not Render's (Render's free
+# database is deleted after 30 days). Secrets are typed in Render's screen (sync: false), never here.
+# Katrine is not part of this and never will be.
+services:
+  - type: web
+    name: brainblocks
+    runtime: docker
+    plan: free
+    region: frankfurt          # closest to Israel; Neon's database is in the same city (AWS eu-central-1)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/ping
+    # Updates go up only when Shir/Claude press "Deploy" (outside school hours): a deploy restarts the
+    # server, and an open game room would close.
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_URL       # jdbc:postgresql://<neon host>/<db>?sslmode=require
+        sync: false
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: JOIN_CODE
+        sync: false
+      - key: ADMIN_USERNAMES
+        value: shir
+      - key: PUBLIC_ORIGIN      # https://<name>.onrender.com - the admin's fingerprint belongs to it
+        sync: false
+      - key: ADMIN_2FA
+        value: "on"

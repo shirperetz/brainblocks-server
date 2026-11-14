@@ -92,24 +92,24 @@ public class LearnController {
 
     @PostMapping("/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AccountService.Session register(@RequestBody Map<String, String> body) {
+    public Object register(@RequestBody Map<String, String> body) {
         botCheck(body);
         consentCheck(body, "parentConsent", "צריך שהורה יאשר את ההרשמה - מסמנים את התיבה למטה");
         AccountService.Session s = accountService.register(body.get("joinCode"), body.get("username"), body.get("password"), body.get("name"),
                 body.get("avatar"), body.get("grade"), body.get("difficulty"));
         accountService.markConsent(s.profile().getId(), "yes".equals(body.get("parentConsent")));
-        return s;
+        return secondStep(s);
     }
 
     /** 2026-11-12: "מורה" at sign-up - no code, waits for Shir's approval. body: { username, password, name } */
     @PostMapping("/auth/register-teacher")
     @ResponseStatus(HttpStatus.CREATED)
-    public AccountService.Session registerTeacher(@RequestBody Map<String, String> body) {
+    public Object registerTeacher(@RequestBody Map<String, String> body) {
         botCheck(body);
         consentCheck(body, "privacyAccepted", "צריך לאשר את מדיניות הפרטיות - מסמנים את התיבה למטה");
         AccountService.Session s = accountService.registerTeacher(body.get("username"), body.get("password"), body.get("name"));
         accountService.markConsent(s.profile().getId(), "yes".equals(body.get("privacyAccepted")));
-        return s;
+        return secondStep(s);
     }
 
     /**
@@ -156,8 +156,24 @@ public class LearnController {
     }
 
     @PostMapping("/auth/login")
-    public AccountService.Session login(@RequestBody Map<String, String> body) {
-        return accountService.login(body.get("username"), body.get("password"), java.time.Instant.now());
+    public Object login(@RequestBody Map<String, String> body) {
+        return secondStep(accountService.login(body.get("username"), body.get("password"), java.time.Instant.now()));
+    }
+
+    private com.example.brainblocks.learning.service.AdminSecondFactor second;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setSecond(com.example.brainblocks.learning.service.AdminSecondFactor second) {
+        this.second = second;
+    }
+
+    /**
+     * 2026-11-14 (public site): the admin gets her token only after the second step (fingerprint or a
+     * backup code) - also when an admin username is registered (a stranger who signs up as "shir" on an
+     * empty site gets nothing).
+     */
+    private Object secondStep(AccountService.Session s) {
+        return second != null && second.required(s) ? second.begin(s) : s;
     }
 
     @GetMapping("/profiles/{id}")
@@ -329,7 +345,16 @@ public class LearnController {
     @PostMapping(path = "/speak", produces = "audio/wav")
     public ResponseEntity<byte[]> speak(@RequestBody Map<String, String> body) {
         byte[] wav = speechService.speak(body.get("text"));
-        return wav == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(wav);
+        if (wav != null) return ResponseEntity.ok(wav);
+        // 2026-11-14 (the public site has no voice of its own): the words to say, so the browser's own
+        // voice can read them - with the math already in words ("38 + 27" -> "שלושים ושמונה ועוד...").
+        String t = body.get("text");
+        if (t == null || t.isBlank()) return ResponseEntity.noContent().build();
+        String spoken = com.example.brainblocks.learning.service.SpokenMath.toSpeech(t);
+        if (spoken.length() > 400) spoken = spoken.substring(0, 400);
+        return ResponseEntity.noContent()
+                .header("X-Spoken", java.net.URLEncoder.encode(spoken, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20"))
+                .build();
     }
 
     // ---- Review mistakes + challenges -------------------------------------

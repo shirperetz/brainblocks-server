@@ -1,0 +1,6 @@
+target/
+run/
+local.properties
+cloud.properties
+*.log
+.idea/

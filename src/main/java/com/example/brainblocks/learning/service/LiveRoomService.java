@@ -574,7 +574,7 @@ public class LiveRoomService {
 
     @org.springframework.beans.factory.annotation.Autowired
     void setSnapshotFile(@org.springframework.beans.factory.annotation.Value("${brainblocks.rooms-file:}") String file) {
-        this.snapshotFile = file == null || file.isBlank() ? null : java.nio.file.Path.of(file);
+        this.snapshotFile = file == null || file.isBlank() || "off".equals(file) ? null : java.nio.file.Path.of(file);
     }
 
     @jakarta.annotation.PostConstruct

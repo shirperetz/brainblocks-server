@@ -56,6 +56,19 @@
 			<artifactId>h2</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- 2026-11-14: a real PostgreSQL (same engine as Neon) inside RealPostgresTest - tests only. -->
+		<dependency>
+			<groupId>io.zonky.test</groupId>
+			<artifactId>embedded-postgres</artifactId>
+			<version>2.2.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.zonky.test.postgres</groupId>
+			<artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
+			<version>17.10.0</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -77,6 +90,10 @@
 				<configuration>
 					<systemPropertyVariables>
 						<brainblocks.phone-alerts>off</brainblocks.phone-alerts>
+						<!-- 2026-11-14: the cloud tests log in as the admin directly; AdminSecondFactorTest turns
+						     the second step on for itself. No rooms file from tests. -->
+						<ADMIN_2FA>off</ADMIN_2FA>
+						<ROOMS_FILE>off</ROOMS_FILE>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>

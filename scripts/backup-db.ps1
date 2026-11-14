@@ -21,3 +21,6 @@ foreach ($d in $dirs) {
   Get-ChildItem $d -Filter "brainblocks-*.sql" | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-14) } | Remove-Item
 }
 "$(Get-Date -Format s) ok $name ($inserts inserts, $([math]::Round((Get-Item $main).Length/1KB)) KB)" | Add-Content (Join-Path $dirs[0] "backup.log")
+
+# 2026-11-14: after this PC's backup, the public site's database too (does nothing until cloud.properties exists).
+& (Join-Path $PSScriptRoot "backup-cloud.ps1")

@@ -39,3 +39,6 @@ local.properties
 *.dump
 .env
 run/
+
+# 2026-11-14: the cloud database address/password for the nightly backup - never in git
+cloud.properties
