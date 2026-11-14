@@ -239,7 +239,8 @@ public class LearnController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
         }
         // 2026-11-12 (idea #3): one level harder after >=90% right in this topic, easier after <=50%.
-        var history = answerRepository.findByProfileId(profileId);
+        // 2026-11-15 (speed): this topic's latest 400 only - every answer the child ever gave grew with time.
+        var history = answerRepository.findTop400ByProfileIdAndTopicOrderByIdDesc(profileId, t);
         var difficulty = com.example.brainblocks.learning.service.AdaptiveDifficulty.forTopic(profile.getDifficulty(), t, history);
         // 2026-11-13 (endless islands): a generated island asks the hardest level of the child's own grade
         // (the generator never leaves the grade's number range - harder, not another grade's material).
@@ -260,12 +261,18 @@ public class LearnController {
         // served is kept, so the server can check the answer itself and the history is complete.
         // secure=true (the new screens): the right answer is not sent - it's checked by /answer.
         String grade = profile.getGrade() == null ? null : profile.getGrade().name();
-        List<QuestionResponse> out = new java.util.ArrayList<>(fresh.size());
+        // 2026-11-15 (speed): saved together in ONE transaction - one commit to the cloud database, not ten.
+        List<com.example.brainblocks.learning.model.LearnQuestion> rows = new java.util.ArrayList<>(fresh.size());
         for (QuestionResponse q : fresh) {
-            var row = bank.save(new com.example.brainblocks.learning.model.LearnQuestion(profileId,
+            rows.add(new com.example.brainblocks.learning.model.LearnQuestion(profileId,
                     (q.getTopic() != null ? q.getTopic() : t).name(), stage, grade, q.getText(), q.getOptions(),
                     q.getOptions().get(q.getCorrectIndex()), q.getSkill(), q.getExplanation()));
-            q.withBankId(row.getId());
+        }
+        var saved = bank.saveAll(rows);
+        List<QuestionResponse> out = new java.util.ArrayList<>(fresh.size());
+        for (int i = 0; i < fresh.size(); i++) {
+            QuestionResponse q = fresh.get(i);
+            q.withBankId(saved.get(i).getId());
             out.add(secure ? q.withoutAnswer() : q);
         }
         return out;
