@@ -16,7 +16,9 @@ $props = @{}
 foreach ($line in Get-Content $propsFile -Encoding UTF8) {
   if ($line -match '^\s*([\w.]+)\s*=\s*(.*)$') { $props[$Matches[1]] = $Matches[2].Trim() }
 }
-$jar = Join-Path $server "run\brainblocks.jar"
+# Its own copy of the tool (the PC server jar may be old, or retired after the move to Render).
+# After a server change: copy target\brainblocks-0.0.1-SNAPSHOT.jar here.
+$jar = Join-Path $server "run\brainblocks-tools.jar"
 $dirs = @("D:\Projects\Backups\brainblocks-cloud", "$env:USERPROFILE\BrainBlocksBackups\cloud")
 foreach ($d in $dirs) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 $name = "brainblocks-cloud-" + (Get-Date -Format "yyyyMMdd-HHmm") + ".zip"
