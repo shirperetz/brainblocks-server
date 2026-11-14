@@ -69,6 +69,17 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<!-- 2026-11-14: the tests read local.properties too; they must never send real alerts to Shir's
+			     phone (AntiBotTest's "a bot tried to sign up" reached her). System properties win over the file. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<brainblocks.phone-alerts>off</brainblocks.phone-alerts>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 

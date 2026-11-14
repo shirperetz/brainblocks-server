@@ -138,16 +138,36 @@ public class ClassBuildingService {
         return classes.findById(child.getClassId()).map(c -> build(c, child.getId())).orElse(null);
     }
 
-    private Map<String, Object> build(LearnClass c, Long childId) {
-        LocalDateTime since = weekStart(LocalDate.now());
-        List<LearnerProfile> kids = profiles.findAll().stream()
+    /** The children of a class (approved, active). */
+    public List<LearnerProfile> kidsOf(LearnClass c) {
+        return profiles.findAll().stream()
                 .filter(p -> c.getId().equals(p.getClassId()) && !p.isTeacher() && !p.isAdmin() && p.isApproved() && !p.isDisabled())
                 .toList();
+    }
+
+    /** This week's building of a class, for anyone (the league; the class island). */
+    public Map<String, Object> week(LearnClass c, Long childId) {
+        return build(c, childId);
+    }
+
+    /** A past week (Sunday [weekStart] to the next Sunday): only the numbers, for the class island's history. */
+    public Map<String, Object> pastWeek(LearnClass c, LocalDateTime weekStart) {
+        return build(c, null, weekStart, weekStart.plusWeeks(1));
+    }
+
+    private Map<String, Object> build(LearnClass c, Long childId) {
+        return build(c, childId, weekStart(LocalDate.now()), null);
+    }
+
+    private Map<String, Object> build(LearnClass c, Long childId, LocalDateTime since, LocalDateTime until) {
+        List<LearnerProfile> kids = kidsOf(c);
         Map<Long, Long> right = new LinkedHashMap<>();
         int donatedAll = 0;
         int myDonated = 0;
         for (LearnerProfile k : kids) {
-            long answered = answers.countByProfileIdAndCorrectTrueAndCreatedAtGreaterThanEqual(k.getId(), since);
+            long answered = until == null
+                    ? answers.countByProfileIdAndCorrectTrueAndCreatedAtGreaterThanEqual(k.getId(), since)
+                    : answers.countByProfileIdAndCorrectTrueAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(k.getId(), since, until);
             int given = donatedCoins(k.getId(), since);
             donatedAll += given;
             if (k.getId().equals(childId)) myDonated = given;

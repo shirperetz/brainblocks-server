@@ -10,4 +10,8 @@ public interface LearnerAnswerRepository extends JpaRepository<LearnerAnswer, Lo
 
     /** 2026-11-12 (idea #6, the class building): a child's right answers since the week began. */
     long countByProfileIdAndCorrectTrueAndCreatedAtGreaterThanEqual(Long profileId, java.time.LocalDateTime since);
+
+    /** 2026-11-14 (the class island): right answers inside one past week. */
+    long countByProfileIdAndCorrectTrueAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(Long profileId, java.time.LocalDateTime from,
+                                                                                       java.time.LocalDateTime to);
 }
