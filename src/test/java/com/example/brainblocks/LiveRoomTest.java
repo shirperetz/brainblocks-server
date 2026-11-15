@@ -143,6 +143,12 @@ class LiveRoomTest {
         // Not started: no questions yet.
         assertThat(status("/api/learn/rooms/code/" + code + "/question", HttpMethod.GET, as(k), null)).isEqualTo(409);
         assertThat(call("/api/learn/rooms/" + room.get("id") + "/start", HttpMethod.POST, as(dana), null)).containsEntry("state", "RUNNING");
+        // 2026-11-15 (#8): pause stops every child (409, "the teacher stopped"), resume lets them go on.
+        assertThat(call("/api/learn/rooms/" + room.get("id") + "/pause", HttpMethod.POST, as(dana), null)).isNotNull();
+        assertThat(call("/api/learn/rooms/code/" + code + "/me", HttpMethod.GET, as(k), null)).containsEntry("paused", true);
+        assertThat(status("/api/learn/rooms/code/" + code + "/question", HttpMethod.GET, as(k), null)).isEqualTo(409);
+        call("/api/learn/rooms/" + room.get("id") + "/resume", HttpMethod.POST, as(dana), null);
+        assertThat(call("/api/learn/rooms/code/" + code + "/me", HttpMethod.GET, as(k), null)).containsEntry("paused", false).containsKey("place");
 
         // The phone never gets the right answer; the server checks it.
         Map<String, Object> q = call("/api/learn/rooms/code/" + code + "/question", HttpMethod.GET, as(k), null);

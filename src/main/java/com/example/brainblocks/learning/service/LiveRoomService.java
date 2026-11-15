@@ -86,6 +86,8 @@ public class LiveRoomService {
         long durationMs;
         State state = State.LOBBY;
         long endsAt;
+        // 2026-11-15 (Shir's room upgrade #8): the teacher pauses everyone; the clock stops (pausedAt).
+        long pausedAt;
         final long createdAt;
         final Map<Long, Player> players = new LinkedHashMap<>();
         final Map<String, int[]> skills = new HashMap<>(); // skill -> {answered, right}
@@ -248,6 +250,21 @@ public class LiveRoomService {
         else if (r.state == State.LOBBY) r.durationMs += 60_000;
     }
 
+    /** 2026-11-15 (#8): pause = every screen stops and the clock with it; resume = the same time is left. */
+    public synchronized void pause(Long me, long roomId) {
+        Room r = own(me, roomId);
+        tick(r);
+        if (r.state == State.RUNNING && r.pausedAt == 0) r.pausedAt = clock.getAsLong();
+    }
+
+    public synchronized void resume(Long me, long roomId) {
+        Room r = own(me, roomId);
+        if (r.state == State.RUNNING && r.pausedAt > 0) {
+            r.endsAt += clock.getAsLong() - r.pausedAt;
+            r.pausedAt = 0;
+        }
+    }
+
     public synchronized void end(Long me, long roomId) {
         Room r = own(me, roomId);
         r.state = State.ENDED;
@@ -368,6 +385,7 @@ public class LiveRoomService {
     private Map<String, Object> question(Room r, Player p) {
         tick(r);
         if (!p.approved || r.state != State.RUNNING) throw new ResponseStatusException(HttpStatus.CONFLICT, "המשחק עוד לא התחיל");
+        if (r.pausedAt > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "המורה עצרה רגע");
         if (p.current == null) next(r, p);
         p.lastActiveMs = clock.getAsLong();
         QuestionResponse q = p.current;
@@ -383,6 +401,7 @@ public class LiveRoomService {
 
     private Map<String, Object> answer(Room r, Player p, Object rawChosen) {
         tick(r);
+        if (r.pausedAt > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "המורה עצרה רגע");
         if (!p.approved || r.state != State.RUNNING || p.current == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, r.state == State.ENDED ? "המשחק נגמר" : "אין שאלה פתוחה");
         }
@@ -485,6 +504,10 @@ public class LiveRoomService {
         m.put("answered", p.answered);
         m.put("right", p.right);
         m.put("inRoom", r.players.values().stream().filter(x -> x.approved).count());
+        m.put("streak", p.streak);
+        // 2026-11-15 (#1): the place among the approved players (1 = first).
+        List<Player> ranked = r.players.values().stream().filter(x -> x.approved).sorted(byScore()).toList();
+        m.put("place", ranked.indexOf(p) + 1);
         return m;
     }
 
@@ -497,7 +520,9 @@ public class LiveRoomService {
         m.put("state", r.state.name());
         m.put("topics", r.topics);
         m.put("minutes", r.durationMs / 60_000);
-        m.put("secondsLeft", r.state == State.RUNNING ? Math.max(0, (r.endsAt - now + 999) / 1000) : r.state == State.LOBBY ? r.durationMs / 1000 : 0);
+        long at = r.pausedAt > 0 ? r.pausedAt : now;
+        m.put("secondsLeft", r.state == State.RUNNING ? Math.max(0, (r.endsAt - at + 999) / 1000) : r.state == State.LOBBY ? r.durationMs / 1000 : 0);
+        m.put("paused", r.state == State.RUNNING && r.pausedAt > 0);
         return m;
     }
 
@@ -518,7 +543,7 @@ public class LiveRoomService {
     }
 
     private void tick(Room r) {
-        if (r.state == State.RUNNING && clock.getAsLong() >= r.endsAt) r.state = State.ENDED;
+        if (r.state == State.RUNNING && r.pausedAt == 0 && clock.getAsLong() >= r.endsAt) r.state = State.ENDED;
     }
 
     private Room own(Long me, long roomId) {
@@ -625,6 +650,7 @@ public class LiveRoomService {
             m.put("durationMs", r.durationMs);
             m.put("state", r.state.name());
             m.put("endsAt", r.endsAt);
+            m.put("pausedAt", r.pausedAt);
             m.put("createdAt", r.createdAt);
             m.put("nextPlayer", r.nextPlayer);
             m.put("skills", r.skills);
@@ -668,6 +694,7 @@ public class LiveRoomService {
                         m.path("durationMs").asLong(), m.path("createdAt").asLong());
                 r.state = State.valueOf(m.path("state").asText("LOBBY"));
                 r.endsAt = m.path("endsAt").asLong();
+                r.pausedAt = m.path("pausedAt").asLong(0);
                 r.nextPlayer = m.path("nextPlayer").asLong(1);
                 m.path("skills").fields().forEachRemaining(e ->
                         r.skills.put(e.getKey(), new int[] {e.getValue().path(0).asInt(), e.getValue().path(1).asInt()}));

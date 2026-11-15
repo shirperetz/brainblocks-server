@@ -71,6 +71,18 @@ public class RoomController {
         return rooms.live(me, id);
     }
 
+    @PostMapping("/{id}/pause")
+    public Map<String, Object> pause(@PathVariable long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        rooms.pause(me, id);
+        return rooms.live(me, id);
+    }
+
+    @PostMapping("/{id}/resume")
+    public Map<String, Object> resume(@PathVariable long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        rooms.resume(me, id);
+        return rooms.live(me, id);
+    }
+
     @PostMapping("/{id}/end")
     public Map<String, Object> end(@PathVariable long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         rooms.end(me, id);
