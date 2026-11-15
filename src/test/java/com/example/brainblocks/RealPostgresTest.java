@@ -100,5 +100,12 @@ class RealPostgresTest {
         assertThat(post("/api/learn/auth/login", Map.of("username", "kidpg1", "password", "secret12"), null, 200).get("token")).isNotNull();
         Long second = kid("kidpg2", boss);
         assertThat(second).isGreaterThan(first);
+
+        // 2026-11-15 (Shir: "delete a blocked child"): erasing works on PostgreSQL too - every row goes.
+        post("/api/learn/sessions", Map.of("profileId", second, "topic", "ADDITION", "stageNumber", 1, "mode", "STAGE",
+                "correctCount", 1, "totalQuestions", 1, "answers", java.util.List.of()), null, 401); // (no token: nothing written)
+        Map<String, Object> erased = post("/api/learn/admin/profiles/" + second + "/erase", null, boss, 200);
+        assertThat(erased.get("erased").toString()).contains("learn_profile");
+        assertThat(post("/api/learn/auth/login", Map.of("username", "kidpg2", "password", "secret12"), null, 401)).isNotNull();
     }
 }
