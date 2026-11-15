@@ -104,6 +104,14 @@ class RealPostgresTest {
         // 2026-11-15 (Shir: "delete a blocked child"): erasing works on PostgreSQL too - every row goes.
         post("/api/learn/sessions", Map.of("profileId", second, "topic", "ADDITION", "stageNumber", 1, "mode", "STAGE",
                 "correctCount", 1, "totalQuestions", 1, "answers", java.util.List.of()), null, 401); // (no token: nothing written)
+        // 2026-11-15: log out -> the token stops working; the password logs in again.
+        String tok = (String) post("/api/learn/auth/login", Map.of("username", "kidpg1", "password", "secret12"), null, 200).get("token");
+        HttpHeaders th = new HttpHeaders(); th.set("X-Learner-Token", tok);
+        assertThat(http.exchange("/api/learn/profiles/" + first, HttpMethod.GET, new HttpEntity<>(th), Map.class).getStatusCode().value()).isEqualTo(200);
+        post("/api/learn/auth/logout", null, tok, 200);
+        assertThat(http.exchange("/api/learn/profiles/" + first, HttpMethod.GET, new HttpEntity<>(th), Map.class).getStatusCode().value()).isEqualTo(401);
+        assertThat(post("/api/learn/auth/login", Map.of("username", "kidpg1", "password", "secret12"), null, 200).get("token")).isNotNull();
+
         Map<String, Object> erased = post("/api/learn/admin/profiles/" + second + "/erase", null, boss, 200);
         assertThat(erased.get("erased").toString()).contains("learn_profile");
         assertThat(post("/api/learn/auth/login", Map.of("username", "kidpg2", "password", "secret12"), null, 401)).isNotNull();

@@ -165,6 +165,18 @@ public class AccountService {
     }
 
     /** Block / unblock; blocking also ends every logged-in device. The admin can't block herself. */
+    /**
+     * 2026-11-15 (Shir: "a log-out button - they must type the password again"): the device's token stops
+     * working on the server too (a shared class tablet can't be reopened without the password).
+     */
+    public void logout(String token) {
+        if (token == null || token.isBlank() || token.length() > 64) return;
+        repository.findByAuthToken(token).ifPresent(p -> {
+            p.setAuthToken(null);
+            repository.save(p);
+        });
+    }
+
     public ProfileResponse setDisabled(Long id, boolean disabled, Long adminId) {
         if (id.equals(adminId)) {
             throw bad("אי אפשר לחסום את עצמך");

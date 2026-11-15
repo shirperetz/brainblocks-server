@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import com.example.brainblocks.config.LearnerAuthConfig;
@@ -153,6 +154,12 @@ public class LearnController {
                 // not a number - ignore
             }
         }
+    }
+
+    @PostMapping("/auth/logout")
+    public Map<String, Object> logout(@RequestHeader(value = "X-Learner-Token", required = false) String token) {
+        accountService.logout(token);
+        return Map.of("loggedOut", true);
     }
 
     @PostMapping("/auth/login")
