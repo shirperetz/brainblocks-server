@@ -71,6 +71,16 @@ class GradeLockTest {
         // The child can't change the grade, and gets questions only from its grade's topics.
         assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("grade", "G6"))).isEqualTo(403);
         assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("companion", "OWL"))).isEqualTo(200);
+        // 2026-11-19: the dolphin tours the child saw are kept in the account (any device), bad keys refused.
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("guideSeen", "home"))).isEqualTo(200);
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("guideSeen", "sea"))).isEqualTo(200);
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("guideSeen", "home"))).isEqualTo(200);
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("guideSeen", "<b>x"))).isEqualTo(400);
+        Map<String, Object> me = http.exchange("/api/learn/profiles/" + kidId, HttpMethod.GET, new HttpEntity<>(as(k)), Map.class).getBody();
+        assertThat(me.get("guidesSeen")).isEqualTo(List.of("home", "sea"));
+        assertThat(status("/api/learn/profiles/" + kidId, HttpMethod.PATCH, k, Map.of("guidesReset", true))).isEqualTo(200);
+        me = http.exchange("/api/learn/profiles/" + kidId, HttpMethod.GET, new HttpEntity<>(as(k)), Map.class).getBody();
+        assertThat(me.get("guidesSeen")).isEqualTo(List.of());
         assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=MULTIPLICATION&stage=1", HttpMethod.GET, k, null)).isEqualTo(200);
         assertThat(status("/api/learn/questions?profileId=" + kidId + "&topic=ANGLE_CALC&stage=1", HttpMethod.GET, k, null)).isEqualTo(403);
         assertThat(status("/api/learn/sessions", HttpMethod.POST, k, Map.of("profileId", kidId, "topic", "ANGLE_CALC", "stage", 1,

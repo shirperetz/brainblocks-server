@@ -40,7 +40,7 @@ public class ProfileResponse {
                 p.getId(), p.getName(), p.getAvatar(), p.getGrade(), p.getDifficulty(),
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
         ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved())
-                .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion())
+                .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion()).withGuidesSeen(p.getGuidesSeen())
                 .withGradeLocked(p.isGradeLocked()).withGradeChangeAllowed(p.isGradeChangeAllowed());
     }
 
@@ -73,6 +73,16 @@ public class ProfileResponse {
     }
 
     public String getCompanion() { return companion; }
+
+    /** 2026-11-19: screens whose dolphin tour this child already saw. */
+    private java.util.List<String> guidesSeen = java.util.List.of();
+
+    private ProfileResponse withGuidesSeen(java.util.List<String> keys) {
+        this.guidesSeen = keys;
+        return this;
+    }
+
+    public java.util.List<String> getGuidesSeen() { return guidesSeen; }
 
     /** 2026-11-11: a teacher sees the teachers' screen; a child's class (null = Shir's own). */
     private boolean teacher;

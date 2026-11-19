@@ -217,6 +217,21 @@ public class LearnerProfile {
     public String getCompanion() { return companion; }
     public void setCompanion(String companion) { this.companion = companion; }
 
+    /**
+     * 2026-11-19 (Shir: "saved in the child's account so they won't see it again"): the screens whose
+     * dolphin tour this child already saw, comma-separated keys ("home,sea,play"). null = none yet.
+     */
+    @Column(length = 600)
+    private String guidesSeen;
+
+    public java.util.List<String> getGuidesSeen() {
+        if (guidesSeen == null || guidesSeen.isBlank()) return java.util.List.of();
+        return java.util.List.of(guidesSeen.split(","));
+    }
+    public void setGuidesSeen(java.util.Collection<String> keys) {
+        this.guidesSeen = keys == null || keys.isEmpty() ? null : String.join(",", keys);
+    }
+
     /** 2026-11-14 (privacy): when the parent's consent (a child) / the privacy policy (a teacher) was given at sign-up. */
     private java.time.LocalDateTime consentAt;
 

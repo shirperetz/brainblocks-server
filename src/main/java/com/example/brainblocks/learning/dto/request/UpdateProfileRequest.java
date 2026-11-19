@@ -25,4 +25,14 @@ public class UpdateProfileRequest {
 
     public String getCompanion() { return companion; }
     public void setCompanion(String companion) { this.companion = companion; }
+
+    /** 2026-11-19: a screen whose dolphin tour the child just finished/skipped (added to the account). */
+    private String guideSeen;
+    /** 2026-11-19: true = show all the tours again ("start the explanations over"). */
+    private Boolean guidesReset;
+
+    public String getGuideSeen() { return guideSeen; }
+    public void setGuideSeen(String guideSeen) { this.guideSeen = guideSeen; }
+    public Boolean getGuidesReset() { return guidesReset; }
+    public void setGuidesReset(Boolean guidesReset) { this.guidesReset = guidesReset; }
 }

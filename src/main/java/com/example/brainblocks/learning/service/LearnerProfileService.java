@@ -40,6 +40,7 @@ public class LearnerProfileService {
         return ProfileResponse.fromEntity(findProfile(id));
     }
 
+    static final java.util.regex.Pattern GUIDE_KEY = java.util.regex.Pattern.compile("[a-z][a-z-]{0,23}");
     static final java.util.Set<String> COMPANIONS = java.util.Set.of("FOX", "PANDA", "PUPPY", "CAT", "OWL", "TURTLE", "NONE");
 
     public ProfileResponse updateProfile(Long id, UpdateProfileRequest request) {
@@ -52,6 +53,20 @@ public class LearnerProfileService {
                         org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid companion: " + request.getCompanion());
             }
             profile.setCompanion(c);
+        }
+        // 2026-11-19: the dolphin tours this child saw - short known-looking keys only, at most 40.
+        if (Boolean.TRUE.equals(request.getGuidesReset())) {
+            profile.setGuidesSeen(null);
+        }
+        if (request.getGuideSeen() != null) {
+            String key = request.getGuideSeen().trim();
+            if (!GUIDE_KEY.matcher(key).matches()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid guide key");
+            }
+            java.util.LinkedHashSet<String> seen = new java.util.LinkedHashSet<>(profile.getGuidesSeen());
+            if (seen.size() < 40) seen.add(key);
+            profile.setGuidesSeen(seen);
         }
         if (request.getAvatar() != null) {
             profile.setAvatar(parseEnum(Avatar.class, request.getAvatar(), "avatar"));
