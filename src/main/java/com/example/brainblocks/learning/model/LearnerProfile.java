@@ -224,6 +224,39 @@ public class LearnerProfile {
     @Column(length = 600)
     private String guidesSeen;
 
+    /**
+     * 2026-11-21 (Shir: "a child who is really good gets harder exercises, but NOT the next grade's
+     * material without the teacher's approval"): topics whose material a teacher/the admin opened at a
+     * higher grade for THIS child, "FRACTIONS:G6,DECIMALS:G6". null = none (the child's own grade).
+     */
+    @Column(length = 400)
+    private String advancedLevels;
+
+    public java.util.Map<Topic, Grade> getAdvancedLevels() {
+        java.util.Map<Topic, Grade> out = new java.util.EnumMap<>(Topic.class);
+        if (advancedLevels == null || advancedLevels.isBlank()) return out;
+        for (String part : advancedLevels.split(",")) {
+            String[] kv = part.split(":");
+            if (kv.length != 2) continue;
+            try {
+                out.put(Topic.valueOf(kv[0].trim()), Grade.valueOf(kv[1].trim()));
+            } catch (IllegalArgumentException ignored) {
+                // a topic or grade that no longer exists - skipped
+            }
+        }
+        return out;
+    }
+
+    /** grade null = back to the child's own grade for this topic. */
+    public void setAdvancedLevel(Topic topic, Grade grade) {
+        java.util.Map<Topic, Grade> m = getAdvancedLevels();
+        if (grade == null) m.remove(topic);
+        else m.put(topic, grade);
+        StringBuilder b = new StringBuilder();
+        for (var e : m.entrySet()) b.append(b.length() == 0 ? "" : ",").append(e.getKey().name()).append(':').append(e.getValue().name());
+        this.advancedLevels = b.length() == 0 ? null : b.toString();
+    }
+
     public java.util.List<String> getGuidesSeen() {
         if (guidesSeen == null || guidesSeen.isBlank()) return java.util.List.of();
         return java.util.List.of(guidesSeen.split(","));

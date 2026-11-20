@@ -39,6 +39,18 @@ public final class MistakeHint {
         FOR_CHILD.put(Mistakes.ANGLE_SUM, "זכרו: קו ישר ומשולש - 180°, סיבוב שלם ומרובע - 360°, פינה ישרה - 90°.");
         FOR_CHILD.put(Mistakes.ANGLE_TYPE, "השוו לפינה של דף: קטנה ממנה - חדה, בדיוק כמוה - ישרה, גדולה ממנה - קהה.");
         FOR_CHILD.put(Mistakes.SHAPE_NAMES, "השם בא מהמספר: משולש - 3, מרובע - 4, מחומש - 5, משושה - 6, מתומן - 8.");
+        // 2026-11-21: the new topics
+        FOR_CHILD.put(Mistakes.PARITY, "הסתכלו רק על הספרה האחרונה: 0, 2, 4, 6, 8 - זוגי. 1, 3, 5, 7, 9 - אי-זוגי.");
+        FOR_CHILD.put(Mistakes.ORDER_OF_OPS, "לא מחשבים משמאל לימין! קודם סוגריים, אחר כך כפל וחילוק, ורק בסוף חיבור וחיסור.");
+        FOR_CHILD.put(Mistakes.ROUNDING_RULE, "מסתכלים רק על הספרה שאחרי המקום שמעגלים אליו: 0 עד 4 - למטה, 5 עד 9 - למעלה.");
+        FOR_CHILD.put(Mistakes.DIVISIBILITY_RULE, "בדקו את הסימן: ב-2 - ספרה אחרונה זוגית, ב-5 - נגמר ב-0 או 5, ב-3 - סכום הספרות מתחלק ב-3.");
+        FOR_CHILD.put(Mistakes.UNIT_CONVERSION, "כמה יש ביחידה? מטר = 100 ס״מ, קילוגרם = 1,000 גרם, שעה = 60 דקות.");
+        FOR_CHILD.put(Mistakes.PERCENT_MEANING, "אחוז זה חלק מ-100: 50% זה חצי, 25% זה רבע, 10% זה עשירית.");
+        FOR_CHILD.put(Mistakes.RATIO_SCALE, "ביחס שואלים 'פי כמה?' - כמה פעמים גדל המספר הראשון, ובאותו מספר כופלים גם את השני.");
+        FOR_CHILD.put(Mistakes.DATA_READING, "שימו את האצבע על העמודה, ולכו איתה בקו ישר אל המספר.");
+        FOR_CHILD.put(Mistakes.CIRCLE_FORMULA, "קוטר זה פעמיים רדיוס. היקף = קוטר × 3.14, ושטח = רדיוס × רדיוס × 3.14.");
+        FOR_CHILD.put(Mistakes.VOLUME_FORMULA, "נפח = אורך × רוחב × גובה - כמה קוביות נכנסות בפנים.");
+        FOR_CHILD.put(Mistakes.INVERSE_OP, "עושים את הפעולה ההפוכה: אם הוסיפו ל-x - מחסירים, אם כפלו את x - מחלקים.");
     }
 
     /** A sentence for this child's wrong answer, or null (right / no answer / a mistake we don't know). */

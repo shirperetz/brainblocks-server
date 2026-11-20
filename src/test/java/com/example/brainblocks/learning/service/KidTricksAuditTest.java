@@ -170,7 +170,10 @@ class KidTricksAuditTest {
 
     static final List<Topic> TOPICS = List.of(Topic.ADDITION, Topic.SUBTRACTION, Topic.MULTIPLICATION, Topic.DIVISION,
             Topic.COMPARISON, Topic.SEQUENCES, Topic.WORD_PROBLEMS, Topic.FRACTIONS, Topic.ANGLES, Topic.ANGLE_CALC,
-            Topic.PERIMETER, Topic.AREA);
+            Topic.PERIMETER, Topic.AREA,
+            // 2026-11-21: the new topics
+            Topic.EVEN_ODD, Topic.MAKE_TEN, Topic.ORDER_OPS, Topic.ROUNDING, Topic.DIVISIBILITY, Topic.MEASURE,
+            Topic.DECIMALS, Topic.PERCENT, Topic.RATIO, Topic.DATA, Topic.CIRCLE, Topic.VOLUME, Topic.EQUATIONS);
 
     record Row(Topic topic, Grade grade, int stage, String trick, double rate, int n) {
     }
@@ -184,12 +187,16 @@ class KidTricksAuditTest {
                 if ((topic == Topic.FRACTIONS || topic.name().startsWith("ANGLE") || topic == Topic.PERIMETER || topic == Topic.AREA)
                         && grade.ordinal() < Grade.G5.ordinal()) continue;
                 if ((topic == Topic.MULTIPLICATION || topic == Topic.DIVISION) && grade.ordinal() < Grade.G3.ordinal()) continue;
+                if (ExtraTopicsQuestions.handles(topic) && !GradeTopics.allowed(topic, grade)) continue;
                 for (int stage = 1; stage <= 6; stage++) {
                     List<QuestionResponse> qs = new ArrayList<>();
                     for (int i = 0; i < perCell / 10; i++) qs.addAll(service.generate(topic, grade, Difficulty.MEDIUM, stage, 10));
                     for (var e : tricks.entrySet()) {
                         // COMPARISON asks for the biggest/smallest - that IS the skill, not a trick.
                         if (topic == Topic.COMPARISON && (e.getKey().equals("הכי גדול") || e.getKey().equals("הכי קטן"))) continue;
+                        // 2026-11-21: "the even one among odd ones" IS knowing even/odd; estimating IS the rounding skill.
+                        if (topic == Topic.EVEN_ODD && e.getKey().equals("השונה מכולם")) continue;
+                        if (topic == Topic.ROUNDING && e.getKey().equals("הערכה בעיגול")) continue;
                         double sum = 0;
                         int n = 0;
                         for (QuestionResponse q : qs) {

@@ -264,6 +264,44 @@ public class StaffController {
         return assignments.createForChild(me, id, body.get("topic"), body.get("rounds"), body.get("days"));
     }
 
+    /**
+     * 2026-11-21 (Shir: "harder when very good, but a higher grade only with the teacher's approval"):
+     * body { topic: "FRACTIONS", grade: "G6" } opens that topic at a higher grade for this child;
+     * grade null/"" = back to the child's own grade. The child's teacher or the admin (staffOver).
+     */
+    @PostMapping("/children/{id}/challenge")
+    public Map<String, Object> challenge(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                         @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        staffOver(me, id);
+        LearnerProfile p = profiles.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין ילד כזה"));
+        com.example.brainblocks.learning.model.Topic t;
+        try {
+            t = com.example.brainblocks.learning.model.Topic.valueOf(String.valueOf(body.get("topic")).trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "נושא לא מוכר");
+        }
+        if (t.isGame() || t == com.example.brainblocks.learning.model.Topic.MIXED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "אפשר לפתוח רק נושא תרגול רגיל");
+        }
+        Object raw = body.get("grade");
+        com.example.brainblocks.learning.model.Grade g = raw == null || raw.toString().isBlank() ? null : grade(raw);
+        if (g != null) {
+            if (p.getGrade() != null && g.ordinal() <= p.getGrade().ordinal()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "צריך לבחור כיתה גבוהה מהכיתה של הילד");
+            }
+            if (!com.example.brainblocks.learning.service.GradeTopics.allowed(t, g)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "הנושא הזה לא נלמד בכיתה הזאת");
+            }
+        }
+        p.setAdvancedLevel(t, g);
+        profiles.save(p);
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        Map<String, String> adv = new java.util.LinkedHashMap<>();
+        p.getAdvancedLevels().forEach((k, v) -> adv.put(k.name(), v.name()));
+        out.put("advanced", adv);
+        return out;
+    }
+
     @PostMapping("/children/{id}/disabled")
     public ProfileResponse disabled(@PathVariable Long id, @RequestBody Map<String, Boolean> body,
                                     @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {

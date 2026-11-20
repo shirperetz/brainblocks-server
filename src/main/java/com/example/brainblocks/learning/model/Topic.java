@@ -36,7 +36,22 @@ public enum Topic {
     ARRAYS,
     PLACE_VALUE,
     NUMBER_LINE,
-    BIGGER;
+    BIGGER,
+    // 2026-11-21 (Shir, overnight: "all the material א׳-ו׳, by the curriculum and the מיצ"ב") -
+    // ExtraTopicsQuestions; each grade gets only its levels (levelCap).
+    EVEN_ODD,
+    MAKE_TEN,
+    ORDER_OPS,
+    ROUNDING,
+    DIVISIBILITY,
+    MEASURE,
+    DECIMALS,
+    PERCENT,
+    RATIO,
+    DATA,
+    CIRCLE,
+    VOLUME,
+    EQUATIONS;
 
     /** True for the island mini-games, whose questions are generated client-side. */
     public boolean isGame() {

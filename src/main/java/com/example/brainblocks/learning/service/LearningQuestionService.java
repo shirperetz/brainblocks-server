@@ -34,6 +34,7 @@ public class LearningQuestionService {
 
     private final SecureRandom random = new SecureRandom();
     private final FractionGeometryQuestions fractionGeometry = new FractionGeometryQuestions(random);
+    private final ExtraTopicsQuestions extra = new ExtraTopicsQuestions(random);
 
     /** How many extra draws per slot before a round accepts a repeat (a topic with few possible exercises). */
     static final int FRESH_TRIES = 8;
@@ -95,6 +96,7 @@ public class LearningQuestionService {
                     : actual == Topic.GEOMETRY ? fractionGeometry.geometry(i, s, topic != Topic.MIXED)
                     : actual == Topic.ANGLES || actual == Topic.ANGLE_CALC || actual == Topic.PERIMETER || actual == Topic.AREA
                             ? fractionGeometry.geometryTrack(i, actual, s, true, g)
+                    : ExtraTopicsQuestions.handles(actual) ? extra.question(i, actual, g, s, d == Difficulty.HARD)
                     : buildQuestion(i, actual, g, d, s));
         }
         // 2026-11-11: every question says which skill it practices (fractions/geometry tag themselves).
@@ -135,6 +137,8 @@ public class LearningQuestionService {
             case FRACTIONS -> fractionGeometry.fraction(id, grade, stage, true);
             case GEOMETRY -> fractionGeometry.geometry(id, stage, true);
             case ANGLES, ANGLE_CALC, PERIMETER, AREA -> fractionGeometry.geometryTrack(id, topic, stage, true, grade);
+            case EVEN_ODD, MAKE_TEN, ORDER_OPS, ROUNDING, DIVISIBILITY, MEASURE, DECIMALS, PERCENT, RATIO,
+                 DATA, CIRCLE, VOLUME, EQUATIONS -> extra.question(id, topic, grade, stage, diff == Difficulty.HARD);
             // Island games build their own rounds in the client; a plain addition question is a safe fallback.
             case DRAGON, BALLOONS, BRIDGE, TRAIN, CLOCK, SHOP, COINS,
                  SHAPE_NAME, SHAPE_SIDES, SHAPE_PATTERN, GROUPS, SHARING, ARRAYS, PLACE_VALUE, NUMBER_LINE, BIGGER -> addition(id, grade, diff, stage);
@@ -496,7 +500,9 @@ public class LearningQuestionService {
             case MEDIUM -> 1.0;
             case HARD -> 1.25;
         };
-        return Math.max(5, (int) Math.round(base * stageScale * diffScale));
+        // 2026-11-21 (Shir: "harder when the child is very good - but NOT the next grade's material
+        // without the teacher"): harder = the top of the child's own grade, never past its ceiling.
+        return Math.max(5, Math.min(base, (int) Math.round(base * stageScale * diffScale)));
     }
 
     private int additiveSpread(int value) {

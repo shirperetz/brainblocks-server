@@ -52,8 +52,15 @@ public class ReportService {
     }
 
     private Map<String, Object> report(LearnerProfile p) {
-        return ProgressReport.build(p, sessions.findByProfileId(p.getId()), answers.findByProfileId(p.getId()),
-                stages.findByProfileId(p.getId()), mistakes.findByProfileId(p.getId()), LocalDateTime.now());
+        var all = answers.findByProfileId(p.getId());
+        Map<String, Object> r = new java.util.LinkedHashMap<>(ProgressReport.build(p, sessions.findByProfileId(p.getId()), all,
+                stages.findByProfileId(p.getId()), mistakes.findByProfileId(p.getId()), LocalDateTime.now()));
+        // 2026-11-21: "⭐ ready for a challenge" topics + what a teacher already opened at a higher grade
+        r.put("challengeReady", AdvancedLevels.ready(p, all));
+        Map<String, String> adv = new java.util.LinkedHashMap<>();
+        p.getAdvancedLevels().forEach((t, g) -> adv.put(t.name(), g.name()));
+        r.put("advanced", adv);
+        return r;
     }
 
     /** Every visible child's row + what is hard for several children at once. */
@@ -65,6 +72,7 @@ public class ReportService {
         for (LearnerProfile p : access.visibleChildren(viewer, classId)) {
             Map<String, Object> report = report(p);
             Map<String, Object> row = ProgressReport.summary(report);
+            row.put("challengeReady", ((List<?>) report.get("challengeReady")).size());
             row.put("classId", p.getClassId());
             rows.add(row);
             @SuppressWarnings("unchecked")

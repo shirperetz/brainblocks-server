@@ -40,7 +40,7 @@ public class ProfileResponse {
                 p.getId(), p.getName(), p.getAvatar(), p.getGrade(), p.getDifficulty(),
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
         ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved())
-                .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion()).withGuidesSeen(p.getGuidesSeen())
+                .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion()).withGuidesSeen(p.getGuidesSeen()).withAdvanced(p.getAdvancedLevels())
                 .withGradeLocked(p.isGradeLocked()).withGradeChangeAllowed(p.isGradeChangeAllowed());
     }
 
@@ -83,6 +83,18 @@ public class ProfileResponse {
     }
 
     public java.util.List<String> getGuidesSeen() { return guidesSeen; }
+
+    /** 2026-11-21: topic -> the higher grade a teacher approved for this child ("FRACTIONS": "G6"). */
+    private java.util.Map<String, String> advanced = java.util.Map.of();
+
+    private ProfileResponse withAdvanced(java.util.Map<com.example.brainblocks.learning.model.Topic, com.example.brainblocks.learning.model.Grade> m) {
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        m.forEach((t, g) -> out.put(t.name(), g.name()));
+        this.advanced = out;
+        return this;
+    }
+
+    public java.util.Map<String, String> getAdvanced() { return advanced; }
 
     /** 2026-11-11: a teacher sees the teachers' screen; a child's class (null = Shir's own). */
     private boolean teacher;

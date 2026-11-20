@@ -41,6 +41,18 @@ public final class Mistakes {
     public static final String ANGLE_SUM = "ANGLE_SUM";
     public static final String ANGLE_TYPE = "ANGLE_TYPE";
     public static final String SHAPE_NAMES = "SHAPE_NAMES";
+    // 2026-11-21: the new topics (ExtraTopicsQuestions)
+    public static final String PARITY = "PARITY";
+    public static final String ORDER_OF_OPS = "ORDER_OF_OPS";
+    public static final String ROUNDING_RULE = "ROUNDING_RULE";
+    public static final String DIVISIBILITY_RULE = "DIVISIBILITY_RULE";
+    public static final String UNIT_CONVERSION = "UNIT_CONVERSION";
+    public static final String PERCENT_MEANING = "PERCENT_MEANING";
+    public static final String RATIO_SCALE = "RATIO_SCALE";
+    public static final String DATA_READING = "DATA_READING";
+    public static final String CIRCLE_FORMULA = "CIRCLE_FORMULA";
+    public static final String VOLUME_FORMULA = "VOLUME_FORMULA";
+    public static final String INVERSE_OP = "INVERSE_OP";
     public static final String UNKNOWN = "UNKNOWN";
 
     /** For the teacher / parent - what probably goes wrong, and what to practise. */
@@ -82,6 +94,28 @@ public final class Mistakes {
                 "להשוות כל זווית לפינה של דף (90°): קטנה - חדה, שווה - ישרה, גדולה - קהה."});
         INFO.put(SHAPE_NAMES, new String[] {"שמות הצורות עוד לא יציבים",
                 "שם הצורה בא מהמספר: מחומש - 5, משושה - 6, מתומן - 8."});
+        INFO.put(PARITY, new String[] {"מתבלבל/ת בין זוגי לאי-זוגי",
+                "להסתכל רק על ספרת האחדות: 0, 2, 4, 6, 8 - זוגי. לחלק חפצים לשתי ערימות שוות."});
+        INFO.put(ORDER_OF_OPS, new String[] {"מחשב/ת משמאל לימין בלי סדר פעולות",
+                "קודם סוגריים, אחר כך כפל וחילוק, בסוף חיבור וחיסור. לסמן בעיגול מה מחשבים ראשון."});
+        INFO.put(ROUNDING_RULE, new String[] {"מעגל/ת לכיוון הלא נכון או למקום הלא נכון",
+                "לסמן את הספרה של המקום שמעגלים אליו, ולהסתכל רק על הספרה שאחריה: 0-4 למטה, 5-9 למעלה."});
+        INFO.put(DIVISIBILITY_RULE, new String[] {"סימני ההתחלקות, מחלקים וכפולות עוד לא יציבים",
+                "לחזור על הסימנים: 2 - אחדות זוגית, 5 - נגמר ב-0/5, 3 ו-9 - סכום הספרות."});
+        INFO.put(UNIT_CONVERSION, new String[] {"מתבלבל/ת כמה יש ביחידת מידה",
+                "לכתוב על כרטיס: מטר = 100 ס״מ, ק״ג = 1,000 גרם, ליטר = 1,000 מ״ל, שעה = 60 דקות."});
+        INFO.put(PERCENT_MEANING, new String[] {"עוד לא ברור מה זה אחוז",
+                "אחוז = חלק מ-100. 50% = חצי, 25% = רבע, 10% = עשירית - להתחיל מאלה."});
+        INFO.put(RATIO_SCALE, new String[] {"מוסיף/ה במקום להכפיל ביחס",
+                "לשאול 'פי כמה?' ולא 'כמה יותר?': אם יש פי 3 ורדים - יש פי 3 חמניות."});
+        INFO.put(DATA_READING, new String[] {"קורא/ת לא נכון גרף או נתונים",
+                "להצביע עם האצבע על העמודה ולעקוב בקו ישר אל המספר בצד."});
+        INFO.put(CIRCLE_FORMULA, new String[] {"מתבלבל/ת בין רדיוס לקוטר, או בין היקף לשטח בעיגול",
+                "קוטר = 2 רדיוסים. היקף = קוטר × 3.14, שטח = רדיוס × רדיוס × 3.14."});
+        INFO.put(VOLUME_FORMULA, new String[] {"מתבלבל/ת בין נפח, שטח ושטח פנים",
+                "נפח = כמה קוביות בפנים (אורך × רוחב × גובה); שטח פנים = סכום שטחי כל הפאות."});
+        INFO.put(INVERSE_OP, new String[] {"לא משתמש/ת בפעולה ההפוכה כדי למצוא את x",
+                "x + 5 = 12 -> מחסירים 5. 3 × x = 12 -> מחלקים ב-3. לבדוק: מציבים את התשובה."});
     }
 
     public static String label(String type) {
@@ -117,6 +151,9 @@ public final class Mistakes {
         if (g.isEmpty() || c.equals(g)) return null;
         try {
             String t = text.strip();
+            // 2026-11-21: the new topics - their own labels (a slip of 1-2 is still a counting slip)
+            String x = newTopics(topic, t, c, g);
+            if (x != null) return x;
             String r = byText(t, c, g);
             if (r != null) return r;
             // The 60-second race / mixed rounds use the same arithmetic texts; anything else numeric:
@@ -126,6 +163,43 @@ public final class Mistakes {
             // an odd text - no label rather than a wrong one
         }
         return UNKNOWN;
+    }
+
+    private static String newTopics(Topic topic, String t, String c, String g) {
+        if (topic == null || !ExtraTopicsQuestions.handles(topic)) return null;
+        Integer ci = integer(c), gi = integer(g);
+        boolean slip = ci != null && gi != null && Math.abs(ci - gi) <= 2;
+        switch (topic) {
+            case EVEN_ODD:
+                if (t.startsWith("כמה מספרים זוגיים")) return COUNTING;
+                if (t.startsWith("מה המספר") && gi != null && ci != null && (gi % 2) == (ci % 2)) return COUNTING; // right kind, skipped one
+                return PARITY;
+            case MAKE_TEN:
+            case DECIMALS:
+                return null; // the regular rules explain these (missing number / decimal point)
+            case ORDER_OPS:
+                return slip ? COUNTING : ci != null && gi != null && Math.abs(ci - gi) == 10 ? CARRY : ORDER_OF_OPS;
+            case ROUNDING:
+                return ROUNDING_RULE;
+            case DIVISIBILITY:
+                return DIVISIBILITY_RULE;
+            case MEASURE:
+                return UNIT_CONVERSION;
+            case PERCENT:
+                return slip ? COUNTING : PERCENT_MEANING;
+            case RATIO:
+                return slip ? COUNTING : RATIO_SCALE;
+            case DATA:
+                return t.contains("סיכוי") || t.contains("סביר") ? FRACTION_MEANING : slip && !t.startsWith("בגרף") ? COUNTING : DATA_READING;
+            case CIRCLE:
+                return CIRCLE_FORMULA;
+            case VOLUME:
+                return VOLUME_FORMULA;
+            case EQUATIONS:
+                return slip ? COUNTING : INVERSE_OP;
+            default:
+                return null;
+        }
     }
 
     private static String byText(String t, String c, String g) {

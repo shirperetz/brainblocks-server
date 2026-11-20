@@ -241,8 +241,10 @@ public class LearnController {
         LearnerProfile profile = profileService.findProfile(profileId);
         int clamped = Math.min(Math.max(count, 1), 20);
         Topic t = parseTopic(topic);
+        // 2026-11-21: the grade this topic is made at - her own, or a higher one her teacher approved.
+        var grade0 = com.example.brainblocks.learning.service.AdvancedLevels.effective(profile, t);
         // 2026-11-12: a child locked to a grade practices only that grade's topics.
-        if (profile.isGradeLocked() && !com.example.brainblocks.learning.service.GradeTopics.allowed(t, profile.getGrade())) {
+        if (profile.isGradeLocked() && !com.example.brainblocks.learning.service.GradeTopics.allowed(t, grade0)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
         }
         // 2026-11-12 (idea #3): one level harder after >=90% right in this topic, easier after <=50%.
@@ -263,11 +265,11 @@ public class LearnController {
                 .limit(200)
                 .map(a -> com.example.brainblocks.learning.service.LearningQuestionService.key(a.getQuestionText(), a.getCorrectAnswer()))
                 .collect(java.util.stream.Collectors.toSet());
-        List<QuestionResponse> fresh = questionService.generateFresh(t, profile.getGrade(), difficulty, stage, clamped, recentRight);
+        List<QuestionResponse> fresh = questionService.generateFresh(t, grade0, difficulty, stage, clamped, recentRight);
         // 2026-11-12 (Shir: "the exercises are saved in a bank, new ones every time"): every question
         // served is kept, so the server can check the answer itself and the history is complete.
         // secure=true (the new screens): the right answer is not sent - it's checked by /answer.
-        String grade = profile.getGrade() == null ? null : profile.getGrade().name();
+        String grade = grade0 == null ? null : grade0.name();
         // 2026-11-15 (speed): saved together in ONE transaction - one commit to the cloud database, not ten.
         List<com.example.brainblocks.learning.model.LearnQuestion> rows = new java.util.ArrayList<>(fresh.size());
         for (QuestionResponse q : fresh) {
@@ -318,7 +320,8 @@ public class LearnController {
         own(request.getProfileId(), me);
         LearnerProfile p = profileService.findProfile(request.getProfileId());
         if (p.isGradeLocked() && request.getTopic() != null
-                && !com.example.brainblocks.learning.service.GradeTopics.allowed(parseTopic(request.getTopic()), p.getGrade())) {
+                && !com.example.brainblocks.learning.service.GradeTopics.allowed(parseTopic(request.getTopic()),
+                        com.example.brainblocks.learning.service.AdvancedLevels.effective(p, parseTopic(request.getTopic())))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
         }
         return progressService.submitSession(request);
