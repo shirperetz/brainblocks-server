@@ -57,4 +57,16 @@ class SpokenMathTest {
             }
         }
     }
+
+    /** 2026-11-21: the new topics' signs are said in words. */
+    @org.junit.jupiter.api.Test
+    void newTopicsSigns() {
+        org.junit.jupiter.api.Assertions.assertEquals("מה איקס? ארבע כפול איקס ועוד שלוש שווה ארבעים ושבע",
+                SpokenMath.toSpeech("מה x? 4 × x + 3 = 47"));
+        org.junit.jupiter.api.Assertions.assertEquals("כמה זה פותחים סוגריים ארבע ועוד שבע סוגרים סוגריים כפול שתיים?",
+                SpokenMath.toSpeech("כמה זה (4 + 7) × 2?"));
+        org.junit.jupiter.api.Assertions.assertEquals("כמה זה עשרים אחוז מ-מאה וחמישים?", SpokenMath.toSpeech("כמה זה 20% מ-150?"));
+        String c = SpokenMath.toSpeech("קוטר העיגול 4 ס״מ. מה ההיקף? (π ≈ 3.14)");
+        org.junit.jupiter.api.Assertions.assertTrue(c.contains("סנטימטר") && c.contains("פאי") && c.contains("שלוש נקודה אחת ארבע"), c);
+    }
 }

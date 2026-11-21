@@ -68,6 +68,14 @@ public final class SpokenMath {
         t = replace(FRACTION, t, m -> fraction(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2))));
         t = replace(DECIMAL, t, m -> number(Long.parseLong(m.group(1))) + " נקודה " + digits(m.group(2)));
         t = replace(DEGREES, t, m -> number(Long.parseLong(m.group(1))) + (m.group(1).equals("1") ? " מעלה" : " מעלות"));
+        // 2026-11-21 (the new topics): x, %, brackets around a formula, π, units written short
+        t = t.replaceAll("(\\d)%", "$1 אחוז").replaceAll("(?<![A-Za-z])x(?![A-Za-z])", " איקס")
+                .replaceAll("\\(\\s*(?=[\\d איקס])(?=\\s*(\\d|איקס))", " פותחים סוגריים ")
+                .replaceAll("(?<=\\d)\\s*\\)", " סוגרים סוגריים ")
+                .replace("π", " פאי ").replace("≈", " בערך ")
+                .replace("סמ״ק", "סנטימטר מעוקב").replace("סמ״ר", "סנטימטר רבוע").replace("קמ״ש", "קילומטר לשעה")
+                .replace("ס״מ", "סנטימטר").replace("ק״מ", "קילומטר").replace("ק״ג", "קילוגרם").replace("ש״ח", "שקלים")
+                .replace("מ״ל", "מיליליטר");
         t = t.replace("×", " כפול ").replace("÷", " חלקי ").replace("=", " שווה ")
                 .replace(" + ", " ועוד ").replace(" - ", " פחות ").replace(" − ", " פחות ")
                 .replace(" : ", " חלקי ").replace("?", "? ").replace("_", " ");

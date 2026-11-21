@@ -669,10 +669,10 @@ public final class ExtraTopicsQuestions {
     // ---- 10. נתונים, גרפים, ממוצע וסיכוי (ב׳-ו׳) -----------------------------------------------
 
     private static final String[][] CHART_SETS = {
-            {"פרי אהוב", "תפוח", "בננה", "ענבים", "תות"},
-            {"חיית מחמד", "כלב", "חתול", "דג", "ארנב"},
-            {"ספורט", "כדורגל", "כדורסל", "שחייה", "ריצה"},
-            {"צבע אהוב", "כחול", "אדום", "ירוק", "סגול"},
+            {"הפרי האהוב", "תפוח", "בננה", "ענבים", "תות"},
+            {"חיית המחמד האהובה", "כלב", "חתול", "דג", "ארנב"},
+            {"הספורט האהוב", "כדורגל", "כדורסל", "שחייה", "ריצה"},
+            {"הצבע האהוב", "כחול", "אדום", "ירוק", "סגול"},
     };
 
     private QuestionResponse data(int id, int level) {
@@ -689,7 +689,7 @@ public final class ExtraTopicsQuestions {
         StringBuilder chart = new StringBuilder();
         for (int i = 0; i < n; i++) chart.append(i == 0 ? "" : "|").append(set[i + 1]).append(":").append(v[i]);
         VisualModel pic = new VisualModel("BAR_CHART", chart.toString(), maxV, n, 0, set[0]);
-        String intro = "בגרף: מה בחרו הילדים (" + set[0] + "). ";
+        String intro = "בגרף - " + set[0] + " של ילדי הכיתה. ";
         switch (level) {
             case 1 -> {
                 int i = random.nextInt(n);
