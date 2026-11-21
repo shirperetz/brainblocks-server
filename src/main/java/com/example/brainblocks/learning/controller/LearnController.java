@@ -235,6 +235,7 @@ public class LearnController {
                                                @RequestParam(defaultValue = "10") int count,
                                                @RequestParam(defaultValue = "false") boolean secure,
                                                @RequestParam(defaultValue = "0") int tier,
+                                               @RequestParam(required = false) String foundation,
                                                @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         own(profileId, me);
         stage = Math.min(Math.max(stage, 1), 6);
@@ -243,12 +244,23 @@ public class LearnController {
         Topic t = parseTopic(topic);
         // 2026-11-21: the grade this topic is made at - her own, or a higher one her teacher approved.
         var grade0 = com.example.brainblocks.learning.service.AdvancedLevels.effective(profile, t);
+        // 2026-11-21 (finding the gap): a foundations round - the base's own topic, range and level
+        // (always at or under the child's grade), tagged with the base's skill.
+        var base = foundation == null ? null : com.example.brainblocks.learning.service.Foundations.byKey(foundation);
+        if (foundation != null && base == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "אין יסוד כזה");
+        if (base != null) {
+            t = base.topic();
+            stage = base.stage();
+            tier = 0;
+            grade0 = profile.getGrade() != null && profile.getGrade().ordinal() < base.grade().ordinal() ? profile.getGrade() : base.grade();
+        }
         // 2026-11-12: a child locked to a grade practices only that grade's topics.
         if (profile.isGradeLocked() && !com.example.brainblocks.learning.service.GradeTopics.allowed(t, grade0)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
         }
         // 2026-11-12 (idea #3): one level harder after >=90% right in this topic, easier after <=50%.
         // 2026-11-15 (speed): this topic's latest 400 only - every answer the child ever gave grew with time.
+        final Topic topicNow = t;
         var history = answerRepository.findTop400ByProfileIdAndTopicOrderByIdDesc(profileId, t);
         var difficulty = com.example.brainblocks.learning.service.AdaptiveDifficulty.forTopic(profile.getDifficulty(), t, history);
         // 2026-11-13 (endless islands): a generated island asks the hardest level of the child's own grade
@@ -259,13 +271,20 @@ public class LearnController {
         }
         // 2026-11-12 (Shir: "always different exercises"): not the ones answered right lately in this topic.
         java.util.Set<String> recentRight = history.stream()
-                .filter(a -> a.isCorrect() && a.getTopic() == t && a.getQuestionText() != null)
+                .filter(a -> a.isCorrect() && a.getTopic() == topicNow && a.getQuestionText() != null)
                 .sorted(java.util.Comparator.comparing(com.example.brainblocks.learning.model.LearnerAnswer::getCreatedAt,
                         java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())).reversed())
                 .limit(200)
                 .map(a -> com.example.brainblocks.learning.service.LearningQuestionService.key(a.getQuestionText(), a.getCorrectAnswer()))
                 .collect(java.util.stream.Collectors.toSet());
+        if (base != null) difficulty = com.example.brainblocks.learning.model.Difficulty.MEDIUM;
         List<QuestionResponse> fresh = questionService.generateFresh(t, grade0, difficulty, stage, clamped, recentRight);
+        if (base != null) fresh.forEach(q -> q.withSkill(base.skill()));
+        // 2026-11-21 (calm mode): two options while this topic is still hard for her (not the 60 seconds)
+        if (profile.isCalm() && secure && com.example.brainblocks.learning.service.CalmMode.twoOptions(history)) {
+            java.util.Random r = new java.util.Random();
+            fresh = new java.util.ArrayList<>(fresh.stream().map(q -> com.example.brainblocks.learning.service.CalmMode.twoOf(q, r)).toList());
+        }
         // 2026-11-12 (Shir: "the exercises are saved in a bank, new ones every time"): every question
         // served is kept, so the server can check the answer itself and the history is complete.
         // secure=true (the new screens): the right answer is not sent - it's checked by /answer.
@@ -308,6 +327,18 @@ public class LearnController {
         out.put("correctIndex", q.optionList().indexOf(q.getCorrectAnswer()));
         out.put("explanation", q.getExplanation() == null ? "" : q.getExplanation());
         return out;
+    }
+
+    /**
+     * 2026-11-21 (finding the gap): the base skill to build now, or {} - from the child's own judged
+     * answers (Foundations). { key, name, emoji, status: CHECK|PRACTICE, forTopic, topicPct, pct }.
+     */
+    @GetMapping("/profiles/{id}/foundation")
+    public Map<String, Object> foundation(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
+        LearnerProfile p = profileService.findProfile(id);
+        var gap = com.example.brainblocks.learning.service.Foundations.find(answerRepository.findTop600ByProfileIdOrderByIdDesc(id), p.getGrade());
+        return gap == null ? Map.of() : gap;
     }
 
     @GetMapping("/profiles/{id}/map")

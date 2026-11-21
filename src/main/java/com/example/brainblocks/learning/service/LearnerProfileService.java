@@ -87,6 +87,7 @@ public class LearnerProfileService {
         if (request.getSoundEnabled() != null) {
             profile.setSoundEnabled(request.getSoundEnabled());
         }
+        if (request.getCalm() != null) profile.setCalm(request.getCalm());
         profile.touch();
         return ProfileResponse.fromEntity(profileRepository.save(profile));
     }

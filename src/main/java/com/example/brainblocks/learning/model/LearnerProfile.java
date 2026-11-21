@@ -210,6 +210,15 @@ public class LearnerProfile {
     public boolean isGradeChangeAllowed() { return !Boolean.FALSE.equals(gradeChangeAllowed); }
     public void setGradeChangeAllowed(boolean allowed) { this.gradeChangeAllowed = allowed; }
 
+    /**
+     * 2026-11-21 (Shir chose "calm mode"): fewer options, short rounds, no typed answers, unlimited
+     * help. The child turns it on in settings, or the teacher/admin from the child's report.
+     */
+    private Boolean calm;
+
+    public boolean isCalm() { return Boolean.TRUE.equals(calm); }
+    public void setCalm(boolean on) { this.calm = on ? Boolean.TRUE : null; }
+
     /** 2026-11-11: the companion animal the child chose (null = the default fox; "NONE" = hidden). */
     @Column(length = 12)
     private String companion;

@@ -339,6 +339,17 @@ public class StaffController {
         return ProfileResponse.fromEntity(p);
     }
 
+    /** 2026-11-21 (calm mode): body { calm: true|false } - the child's teacher or the admin. */
+    @PostMapping("/children/{id}/calm")
+    public ProfileResponse setCalm(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                   @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        staffOver(me, id);
+        LearnerProfile p = profiles.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין ילד כזה"));
+        p.setCalm(Boolean.parseBoolean(String.valueOf(body.get("calm"))));
+        profiles.save(p);
+        return ProfileResponse.fromEntity(p);
+    }
+
     private static com.example.brainblocks.learning.model.Grade grade(Object raw) {
         try {
             return com.example.brainblocks.learning.model.Grade.valueOf(raw.toString().trim().toUpperCase());

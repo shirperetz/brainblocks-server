@@ -23,5 +23,11 @@ public class SubmitSessionRequest {
     public long getDurationMs() { return durationMs; }
     public void setDurationMs(long durationMs) { this.durationMs = durationMs; }
     public List<AnswerDto> getAnswers() { return answers; }
+
+    /** 2026-11-21 (finding the gap): a foundations round (Foundations key) - saved, not on the map. */
+    private String foundation;
+
+    public String getFoundation() { return foundation; }
+    public void setFoundation(String foundation) { this.foundation = foundation; }
     public void setAnswers(List<AnswerDto> answers) { this.answers = answers; }
 }

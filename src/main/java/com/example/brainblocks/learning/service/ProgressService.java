@@ -176,7 +176,7 @@ public class ProgressService {
         // Stage progress + unlock (only real stage play counts toward the map).
         boolean nextUnlocked = false;
         int nextStage = 0;
-        if (mode == SessionMode.STAGE) {
+        if (mode == SessionMode.STAGE && request.getFoundation() == null) {
             LearnerStageProgress current = upsertStage(profile.getId(), topic, stage, StageStatus.UNLOCKED);
             current.recordAttempt(scorePct, stars, passed);
             stageProgressRepository.save(current);

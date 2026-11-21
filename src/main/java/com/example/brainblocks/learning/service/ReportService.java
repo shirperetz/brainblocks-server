@@ -60,6 +60,10 @@ public class ReportService {
         Map<String, String> adv = new java.util.LinkedHashMap<>();
         p.getAdvancedLevels().forEach((t, g) -> adv.put(t.name(), g.name()));
         r.put("advanced", adv);
+        // 2026-11-21 (finding the gap): the base skill under a topic that goes badly, if any
+        List<com.example.brainblocks.learning.model.LearnerAnswer> newest = new ArrayList<>(all);
+        newest.sort(java.util.Comparator.comparing(com.example.brainblocks.learning.model.LearnerAnswer::getId).reversed());
+        r.put("foundation", Foundations.find(newest.subList(0, Math.min(600, newest.size())), p.getGrade()));
         return r;
     }
 

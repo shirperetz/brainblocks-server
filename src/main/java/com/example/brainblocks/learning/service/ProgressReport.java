@@ -231,6 +231,7 @@ public final class ProgressReport {
         c.put("grade", p.getGrade());
         c.put("gradeLocked", p.isGradeLocked());
         c.put("gradeChangeAllowed", p.isGradeChangeAllowed());
+        c.put("calm", p.isCalm()); // 2026-11-21
         c.put("classId", p.getClassId()); // 2026-11-12: the report's "move to class" card
         c.put("username", p.getUsername());
         c.put("totalPoints", p.getTotalPoints());

@@ -35,4 +35,10 @@ public class UpdateProfileRequest {
     public void setGuideSeen(String guideSeen) { this.guideSeen = guideSeen; }
     public Boolean getGuidesReset() { return guidesReset; }
     public void setGuidesReset(Boolean guidesReset) { this.guidesReset = guidesReset; }
+
+    /** 2026-11-21: calm mode on/off (settings). */
+    private Boolean calm;
+
+    public Boolean getCalm() { return calm; }
+    public void setCalm(Boolean calm) { this.calm = calm; }
 }

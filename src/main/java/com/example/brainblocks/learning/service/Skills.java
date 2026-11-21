@@ -23,6 +23,11 @@ public final class Skills {
 
     static {
         // חיבור / חיסור
+        // 2026-11-21: foundations (Foundations - "finding the gap")
+        NAMES.put("BASE_ADD20", "יסודות: חיבור עד 20");
+        NAMES.put("BASE_SUB20", "יסודות: חיסור עד 20");
+        NAMES.put("BASE_TIMES", "יסודות: לוח הכפל");
+        NAMES.put("BASE_DIVIDE", "יסודות: חילוק בלוח הכפל");
         NAMES.put("ADD_TO_10", "חיבור עד 10");
         NAMES.put("ADD_NO_CARRY", "חיבור בלי המרה");
         NAMES.put("ADD_CARRY", "חיבור עם המרה (נשיאה)");

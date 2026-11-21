@@ -41,7 +41,7 @@ public class ProfileResponse {
                 p.getTotalPoints(), p.getDailyStreak(), p.isSoundEnabled(), p.getCreatedAt()
         ).withUsername(p.getUsername()).withAdmin(p.isAdmin()).withApproved(p.isApproved())
                 .withTeacher(p.isTeacher(), p.getClassId()).withCompanion(p.getCompanion()).withGuidesSeen(p.getGuidesSeen()).withAdvanced(p.getAdvancedLevels())
-                .withGradeLocked(p.isGradeLocked()).withGradeChangeAllowed(p.isGradeChangeAllowed());
+                .withGradeLocked(p.isGradeLocked()).withGradeChangeAllowed(p.isGradeChangeAllowed()).withCalm(p.isCalm());
     }
 
     /** 2026-11-12: the grade was set by the admin/teacher - the child can't change it. */
@@ -63,6 +63,16 @@ public class ProfileResponse {
     }
 
     public boolean isGradeChangeAllowed() { return gradeChangeAllowed; }
+
+    /** 2026-11-21: calm mode (two options while a topic is hard, short rounds). */
+    private boolean calm;
+
+    private ProfileResponse withCalm(boolean on) {
+        this.calm = on;
+        return this;
+    }
+
+    public boolean isCalm() { return calm; }
 
     /** 2026-11-11: the companion animal (null = default). */
     private String companion;
