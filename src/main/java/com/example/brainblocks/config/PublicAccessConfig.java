@@ -151,7 +151,11 @@ public class PublicAccessConfig implements WebMvcConfigurer {
         // lesson - 20 per 10 minutes would lock children out. Guessing passwords is still stopped per
         // user (5 wrong -> 5 minutes, AccountService).
         Limiter login = new Limiter(60, 10 * MINUTE);     // log-in tries per address
-        Limiter ai = new Limiter(20, MINUTE);              // "לא הבנתי" (local AI) per address
+        Limiter ai = new Limiter(20, MINUTE);              // "לא הבנתי" per child (logged in) or per address
+        // 2026-11-21 (security pass): a class behind one school address shared ONE "לא הבנתי" allowance and
+        // one 600/min - now each child has its own, with a roomy cap per address for logged-in children.
+        Limiter aiSchool = new Limiter(300, MINUTE);
+        Limiter allLoggedIn = new Limiter(3000, MINUTE);
         // 2026-11-12: 🔊 reading every question aloud - a whole class behind one school address would pass
         // 20/min at once; repeats come from SpeechService's memory, so it gets its own, bigger allowance.
         Limiter speech = new Limiter(120, MINUTE);
@@ -177,7 +181,7 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                     long now = clock.millis();
                     if (now - lastCleanup > 10 * MINUTE) {
                         lastCleanup = now;
-                        for (Limiter l : new Limiter[] {register, contact, login, ai, speech, all, room, guestJoin, rounds, answers, perChild}) {
+                        for (Limiter l : new Limiter[] {register, contact, login, ai, aiSchool, allLoggedIn, speech, all, room, guestJoin, rounds, answers, perChild}) {
                             l.cleanup(now);
                         }
                     }
@@ -188,16 +192,18 @@ public class PublicAccessConfig implements WebMvcConfigurer {
                         org.slf4j.LoggerFactory.getLogger("brainblocks.signup").info("sign-up attempt from {}", who);
                     }
                     boolean inRoom = path.startsWith("/api/learn/rooms/") || path.startsWith("/api/learn/room-guest/");
-                    boolean ok = (inRoom ? room.allow(who, now) : all.allow(who, now))
+                    String token = req.getHeader("X-Learner-Token");
+                    boolean loggedIn = token != null && !token.isBlank();
+                    String child = loggedIn ? "t:" + Integer.toHexString(token.hashCode()) + token.length() : null;
+                    boolean help = post && path.equals("/api/learn/help");
+                    boolean ok = (inRoom ? room.allow(who, now) : loggedIn ? allLoggedIn.allow(who, now) : all.allow(who, now))
                             && (!post || !path.equals("/api/learn/room-guest/join") || guestJoin.allow(who, now))
                             && (!post || !path.startsWith("/api/learn/auth/register") || register.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/login") || login.allow(who, now))
                             && (!post || !path.equals("/api/learn/auth/contact") || contact.allow(who, now))
-                            && (!post || !path.equals("/api/learn/help") || ai.allow(who, now))
+                            && (!help || (loggedIn ? aiSchool.allow(who, now) && ai.allow(child, now) : ai.allow(who, now)))
                             && (!post || !path.equals("/api/learn/speak") || speech.allow(who, now));
-                    String token = req.getHeader("X-Learner-Token");
-                    if (ok && token != null && !token.isBlank()) {
-                        String child = "t:" + Integer.toHexString(token.hashCode()) + token.length();
+                    if (ok && loggedIn) {
                         ok = perChild.allow(child, now)
                                 && (!post || !path.endsWith("/sessions") || rounds.allow(child, now))
                                 && (!post || !path.endsWith("/answer") || answers.allow(child, now));
