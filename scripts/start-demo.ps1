@@ -8,7 +8,7 @@ $data = Join-Path $env:TEMP "brainblocks-demo"
 New-Item -ItemType Directory -Force $data | Out-Null
 Push-Location (Join-Path $root "..\learn-client"); npm run build; Pop-Location
 $env:SPRING_PROFILES_ACTIVE = "cloud"
-$env:DATABASE_URL = "jdbc:h2:file:$($data -replace '\','/')/demo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
+$env:DATABASE_URL = "jdbc:h2:file:$($data.Replace('\','/'))/demo;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
 $env:DATABASE_USER = "sa"; $env:DATABASE_PASSWORD = ""
 $env:JOIN_CODE = "4711"; $env:ADMIN_USERNAMES = "boss"; $env:ADMIN_2FA = "off"
 $env:PUBLIC_ORIGIN = "http://127.0.0.1:8094"; $env:PORT = "8094"; $env:KEEP_AWAKE_URL = ""
