@@ -83,11 +83,11 @@ class StrugglingKidsTest {
     }
 
     @Test
-    void twoOfKeepsTheRightAnswerAndTheClosestNumber() {
+    void twoOfKeepsTheRightAnswerAndTheMiddleWrongNumber() {
         var q = new QuestionResponse(1, Topic.ADDITION, "כמה זה 7 + 5?", List.of("2", "12", "13", "75"), 1, "", "", null);
         for (int i = 0; i < 20; i++) {
             var two = CalmMode.twoOf(q, new Random(i));
-            assertThat(two.getOptions()).containsExactlyInAnyOrder("12", "13");
+            assertThat(two.getOptions()).containsExactlyInAnyOrder("12", "2"); // not 13 (a trap), not 75
             assertThat(two.getOptions().get(two.getCorrectIndex())).isEqualTo("12");
         }
     }

@@ -35,8 +35,9 @@ public final class CalmMode {
     }
 
     /**
-     * The right answer + ONE other - the closest number when the options are numbers (a real
-     * choice, not a giveaway), a random one otherwise. Order random.
+     * The right answer + ONE other. With numbers: not the closest (8239 vs 8238 is a trap for a child
+     * who struggles - found in the demo screenshots) and not the farthest (a giveaway) - the middle
+     * one of the wrong options. Otherwise a random one. Order random.
      */
     public static QuestionResponse twoOf(QuestionResponse q, Random random) {
         List<String> opts = q.getOptions();
@@ -46,13 +47,16 @@ public final class CalmMode {
         String other = null;
         java.math.BigDecimal r = LearnQuestionNumbers.number(right);
         if (r != null) {
-            java.math.BigDecimal best = null;
+            List<String> wrong = new ArrayList<>();
+            boolean allNumbers = true;
             for (int i = 0; i < opts.size(); i++) {
                 if (i == ci) continue;
-                java.math.BigDecimal v = LearnQuestionNumbers.number(opts.get(i));
-                if (v == null) { best = null; other = null; break; }
-                java.math.BigDecimal d = v.subtract(r).abs();
-                if (best == null || d.compareTo(best) < 0) { best = d; other = opts.get(i); }
+                if (LearnQuestionNumbers.number(opts.get(i)) == null) { allNumbers = false; break; }
+                wrong.add(opts.get(i));
+            }
+            if (allNumbers && !wrong.isEmpty()) {
+                wrong.sort(java.util.Comparator.comparing(o -> LearnQuestionNumbers.number(o).subtract(r).abs()));
+                other = wrong.get(wrong.size() >= 3 ? 1 : wrong.size() - 1);
             }
         }
         if (other == null) {
