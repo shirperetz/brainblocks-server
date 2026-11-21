@@ -616,7 +616,7 @@ public final class ExtraTopicsQuestions {
                 int a = rand(1, 4), b = rand(2, 5), k = rand(2, small ? 4 : 8);
                 if (a == b) b++;
                 return num(id, Topic.RATIO, "בגינה על כל " + a + " ורדים יש " + b + " חמניות. יש " + a * k + " ורדים. כמה חמניות?", b * k,
-                        List.of(a * k + (b - a), b + k, a * k, b * k + b),
+                        List.of(a * k + (b - a), b + k, a * k, b * k + b, b * (k - 1), b * k - b / 2 - 1),
                         "בודקים כמה פעמים " + a + " נכנס ב-" + a * k + ", ומכפילים גם את " + b + " באותו מספר.",
                         a * k + " = " + a + " × " + k + ", ולכן " + b + " × " + k + " = " + b * k + " חמניות.", null).withSkill("RATIO_SCALE");
             }
@@ -635,7 +635,7 @@ public final class ExtraTopicsQuestions {
             case 3 -> {
                 int eggs = rand(2, 4), people = rand(2, 4), k = rand(2, 4);
                 return num(id, Topic.RATIO, "במתכון ל-" + people + " אנשים צריך " + eggs + " ביצים. כמה ביצים צריך ל-" + people * k + " אנשים?", eggs * k,
-                        List.of(eggs + people * k - people, eggs * k + eggs, people * k, eggs + k),
+                        List.of(eggs + people * k - people, eggs * k + eggs, people * k, eggs + k, eggs * (k - 1), eggs * k - 1),
                         "פי כמה יותר אנשים? פי כך יותר ביצים.", people * k + " = פי " + k + ", ולכן " + eggs + " × " + k + " = " + eggs * k + ".", null).withSkill("RATIO_RECIPE");
             }
             case 4 -> {
@@ -659,7 +659,7 @@ public final class ExtraTopicsQuestions {
             default -> {
                 int speed = rand(4, 9) * 10, h = rand(2, 5);
                 return num(id, Topic.RATIO, "מכונית נוסעת " + speed + " קמ״ש. כמה קילומטרים תעבור ב-" + h + " שעות?", speed * h,
-                        List.of(speed + h, speed * h + speed, speed / h == 0 ? speed * 2 : speed * (h - 1), speed * h - 10),
+                        List.of(speed + h, speed * h + speed, speed * (h - 1), speed * h - 10, speed * h + 10, speed * (h - 2) + 5),
                         "קמ״ש = כמה קילומטרים בשעה אחת. כמה שעות? כופלים.",
                         speed + " × " + h + " = " + speed * h + " ק״מ.", null).withSkill("RATIO_SPEED");
             }
@@ -807,12 +807,13 @@ public final class ExtraTopicsQuestions {
             case 1 -> {
                 int s = rand(2, small ? 4 : 6);
                 return num(id, Topic.VOLUME, "קובייה שצלעה " + s + " ס״מ. מה הנפח שלה (בסמ״ק)?", s * s * s,
-                        List.of(s * s, 3 * s, 6 * s * s, 12 * s, s * s * (s + 1), s * s * (s - 1)), "נפח = אורך × רוחב × גובה. בקובייה כולם שווים.",
+                        List.of(s * s * (s - 1), s * s, 3 * s, 12 * s, s * s * (s + 1), 6 * s * s, (s + 1) * (s + 1) * (s + 1)), "נפח = אורך × רוחב × גובה. בקובייה כולם שווים.",
                         s + " × " + s + " × " + s + " = " + s * s * s + " סמ״ק.", new VisualModel("BOX", null, s, s, s, null)).withSkill("VOL_CUBE");
             }
             case 2, 3 -> {
                 return num(id, Topic.VOLUME, "תיבה: אורך " + a + ", רוחב " + b + " וגובה " + c + " ס״מ. מה הנפח?", a * b * c,
-                        List.of(a + b + c, a * b, 2 * (a * b + b * c + a * c), a * b * c + a * b, a * b * (c - 1), 2 * a * b * c),
+                        List.of(a * b * (c - 1), (a - 1) * b * c, a * (b - 1) * c, a + b + c, a * b,
+                                2 * (a * b + b * c + a * c), a * b * (c + 1), (a + 1) * b * c),
                         "נפח התיבה = אורך × רוחב × גובה (כמה קוביות של סנטימטר נכנסות).",
                         a + " × " + b + " × " + c + " = " + a * b * c + " סמ״ק.", new VisualModel("BOX", null, a, b, c, null)).withSkill("VOL_BOX");
             }

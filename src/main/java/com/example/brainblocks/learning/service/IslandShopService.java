@@ -61,8 +61,8 @@ public class IslandShopService {
                 new String[] {"צבע ליד הבית", "גן גדול עם ספסל"});
         add("boat", "transport", new String[] {"סירת מפרש", "סירת דייגים"}, new int[] {30, 55},
                 new String[] {"סירה ליד החוף", "רשת דייגים ודגים"});
-        add("ship", "transport", new String[] {"ספינה", "ספינת מפרשים גדולה"}, new int[] {80, 150},
-                new String[] {"ספינה עם תורן ומפרשים", "שני תרנים ודגל"});
+        add("ship", "transport", new String[] {"ספינה", "ספינת מפרשים גדולה", "ספינת פיראטים"}, new int[] {80, 150, 260},
+                new String[] {"ספינה עם תורן ומפרשים", "שני תרנים ודגל", "מפרשים שחורים, תותחים ותיבת אוצר"});
         // 2026-11-13 (Shir: "upgrade what's inside the islands - change, add, everything")
         add("school", "home", new String[] {"בית ספר", "בית ספר עם פעמון"}, new int[] {50, 100},
                 new String[] {"כיתה קטנה באי", "מגדל פעמון ומגרש"});
@@ -92,6 +92,28 @@ public class IslandShopService {
         add("balloon", "transport", new String[] {"כדור פורח", "כדור פורח גדול"}, new int[] {70, 140},
                 new String[] {"מרחף מעל האי", "סל גדול ופסים צבעוניים"});
         add("rocket", "transport", new String[] {"חללית"}, new int[] {220}, new String[] {"חללית שמוכנה לטוס לירח"});
+        // 2026-11-21 (Shir: "more crazy things for the islands - invest"): the wonders (3D in island3d/wonders.js)
+        add("icecream", "food", new String[] {"גלידריה"}, new int[] {30}, new String[] {"גלידה בשלוש קומות"});
+        add("rainbow", "magic", new String[] {"קשת בענן"}, new int[] {25}, new String[] {"קשת בכל הצבעים עם עננים"});
+        add("chest", "magic", new String[] {"תיבת אוצר"}, new int[] {40}, new String[] {"נפתחת לבד - מטבעות ויהלום"});
+        add("carousel", "fun", new String[] {"קרוסלה"}, new int[] {50}, new String[] {"סוסים צבעוניים שמסתובבים"});
+        add("treehouse", "home", new String[] {"בית עץ", "בית עץ עם אומגה"}, new int[] {45, 90},
+                new String[] {"בית קטן על העץ וסולם חבלים", "אומגה ונדנדה"});
+        add("robot", "fun", new String[] {"רובוט"}, new int[] {70}, new String[] {"רובוט שמנופף שלום"});
+        add("ferris", "fun", new String[] {"גלגל ענק"}, new int[] {120}, new String[] {"שמונה תאים צבעוניים שמסתובבים"});
+        add("dino", "animals", new String[] {"דינוזאור"}, new int[] {80}, new String[] {"דינוזאור ירוק עם צוואר ארוך"});
+        add("helicopter", "transport", new String[] {"מסוק"}, new int[] {160}, new String[] {"ממריא, מרחף ונוחת"});
+        add("dragon", "magic", new String[] {"ביצת דרקון", "דרקון קטן", "דרקון מעופף"}, new int[] {60, 140, 300},
+                new String[] {"ביצה מנוקדת שזזה", "דרקון ירוק עם כנפיים", "דרקון אדום שעף מעל האי ויורק אש"});
+        add("wizard", "magic", new String[] {"מגדל קוסמים", "מגדל קוסמים גבוה"}, new int[] {110, 220},
+                new String[] {"כדור קסם שמרחף ומאיר", "מגדל גבוה יותר וכוכבים"});
+        add("volcano", "production", new String[] {"הר געש", "הר געש פעיל"}, new int[] {150, 260},
+                new String[] {"לבה זוהרת", "עשן שעולה בלי הפסקה"});
+        add("unicorn", "magic", new String[] {"חד-קרן", "חד-קרן וקשת"}, new int[] {90, 180},
+                new String[] {"רעמה בצבעי הקשת וקרן זהב", "קשת בענן מעליו"});
+        add("observatory", "production", new String[] {"מצפה כוכבים"}, new int[] {130}, new String[] {"כיפה שמסתובבת וטלסקופ"});
+        add("coaster", "fun", new String[] {"רכבת הרים"}, new int[] {200}, new String[] {"מסילה מתפתלת ושתי קרונות שנוסעות"});
+        add("ufo", "transport", new String[] {"צלחת מעופפת"}, new int[] {280}, new String[] {"חייזר ירוק, אורות וקרן"});
     }
 
     /**
@@ -99,11 +121,18 @@ public class IslandShopService {
      * thing can be bought; everything else from the first. Each island shows its new ones, and what
      * the next island will bring.
      */
-    public static final Map<String, Integer> FROM_ISLE = Map.of(
-            "school", 1, "fountain", 1, "cow", 1,
-            "playground", 2, "horse", 2,
-            "balloon", 3,
-            "rocket", 5);
+    public static final Map<String, Integer> FROM_ISLE = Map.ofEntries(
+            Map.entry("school", 1), Map.entry("fountain", 1), Map.entry("cow", 1),
+            Map.entry("playground", 2), Map.entry("horse", 2),
+            Map.entry("balloon", 3),
+            Map.entry("rocket", 5),
+            // 2026-11-21: the wonders - something new to wait for on every island
+            Map.entry("treehouse", 1), Map.entry("robot", 1),
+            Map.entry("ferris", 2), Map.entry("dino", 2), Map.entry("helicopter", 2),
+            Map.entry("dragon", 3), Map.entry("wizard", 3),
+            Map.entry("volcano", 4), Map.entry("unicorn", 4), Map.entry("observatory", 4),
+            Map.entry("coaster", 5),
+            Map.entry("ufo", 6));
 
     public static int fromIsle(String kind) {
         return FROM_ISLE.getOrDefault(kind, 0);
