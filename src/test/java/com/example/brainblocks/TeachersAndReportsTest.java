@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.example.brainblocks.learning.repository.LearnQuestionRepository;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
@@ -29,6 +30,9 @@ import org.springframework.test.context.ActiveProfiles;
         "server.port=0"})
 @ActiveProfiles("cloud")
 class TeachersAndReportsTest {
+
+    @Autowired
+    private LearnQuestionRepository bank;
 
     @Autowired
     TestRestTemplate http;
@@ -113,7 +117,7 @@ class TeachersAndReportsTest {
                     "correct", false, "hintUsed", false, "topic", "ADDITION"));
         }
         assertThat(status("/api/learn/sessions", HttpMethod.POST, noaToken, Map.of("profileId", noaId, "topic", "ADDITION",
-                "stage", 3, "mode", "STAGE", "durationMs", 120000, "answers", answers))).isEqualTo(200);
+                "stage", 3, "mode", "STAGE", "durationMs", 120000, "answers", Banked.of(bank, noaId, "ADDITION", answers)))).isEqualTo(200);
 
         Map<String, Object> report = get("/api/learn/staff/children/" + noaId + "/report", dana, Map.class);
         List<Map<String, Object>> hard = (List<Map<String, Object>>) report.get("hard");
@@ -134,7 +138,7 @@ class TeachersAndReportsTest {
                     "correct", true, "hintUsed", false, "topic", "ADDITION"));
         }
         assertThat(status("/api/learn/sessions", HttpMethod.POST, noaToken, Map.of("profileId", noaId, "topic", "ADDITION",
-                "stage", 1, "mode", "STAGE", "durationMs", 60000, "answers", allRight))).isEqualTo(200);
+                "stage", 1, "mode", "STAGE", "durationMs", 60000, "answers", Banked.of(bank, noaId, "ADDITION", allRight)))).isEqualTo(200);
         assertThat(status(island, HttpMethod.PUT, noaToken, Map.of("spot", "ADDITION-1", "item", "<b>hi</b>"))).isEqualTo(400);
         assertThat(status(island, HttpMethod.PUT, noaToken, Map.of("spot", "ADDITION-1", "item", "🌳"))).isEqualTo(200);
         Map<String, Object> mine = get(island, noaToken, Map.class);

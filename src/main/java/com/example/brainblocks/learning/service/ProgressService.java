@@ -99,12 +99,15 @@ public class ProgressService {
 
         // 2026-11-12 (Shir: check answers on the server): an answer that names its bank question is
         // judged from the bank - what the phone says about "right" is ignored. Only the child's own rows.
+        Topic topic0 = parseTopic(request.getTopic());
+        java.util.Set<AnswerDto> verified = GameResultGuard.newVerifiedSet();
         if (bank != null) {
             for (AnswerDto a : answers) {
                 if (a.getBankId() == null) continue;
                 bank.findById(a.getBankId())
                         .filter(q -> q.getProfileId().equals(request.getProfileId()))
                         .ifPresent(q -> {
+                            verified.add(a);
                             String chosen = q.getChosenAnswer() != null ? q.getChosenAnswer() : a.getChosenAnswer();
                             a.setChosenAnswer(chosen);
                             a.setCorrectAnswer(q.getCorrectAnswer());
@@ -114,8 +117,13 @@ public class ProgressService {
             }
         }
 
+        // 2026-11-21 (security pass): games can't be re-solved here - plausibility checks; question
+        // topics - an answer that isn't one of the child's own bank questions is never "right".
+        if (topic0 != null && topic0.isGame()) GameResultGuard.checkGame(request.getProfileId(), answers);
+        else if (bank != null) GameResultGuard.unverifiedIsWrong(answers, verified);
+
         LearnerProfile profile = profileService.findProfile(request.getProfileId());
-        Topic topic = parseTopic(request.getTopic());
+        Topic topic = topic0;
         SessionMode mode = parseMode(request.getMode());
         int stage = Math.min(Math.max(request.getStage(), 1), STAGES_PER_TOPIC);
 

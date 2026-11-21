@@ -294,10 +294,12 @@ public class IsleService {
 
         LearnerProfile profile = profiles.findById(profileId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         // 2026-11-13: a question topic (not a game) is judged from the bank - the phone's "right" is ignored.
+        if (topic.isGame()) GameResultGuard.checkGame(profileId, list); // 2026-11-21 security pass
         if (!topic.isGame()) {
+            java.util.Set<Long> seenBank = new java.util.HashSet<>();
             for (AnswerDto a : list) {
                 var q = a.getBankId() == null || bank == null ? null : bank.findById(a.getBankId()).filter(x -> x.getProfileId().equals(profileId)).orElse(null);
-                if (q == null) {
+                if (q == null || !seenBank.add(q.getId())) {
                     a.setCorrect(false);
                     continue;
                 }

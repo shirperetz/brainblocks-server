@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.example.brainblocks.learning.repository.LearnQuestionRepository;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
@@ -27,6 +28,9 @@ import org.springframework.test.context.ActiveProfiles;
         "server.port=0", "brainblocks.rounds-per-minute=1000"})
 @ActiveProfiles("cloud")
 class WeeklyAssignmentTest {
+
+    @Autowired
+    private LearnQuestionRepository bank;
 
     @Autowired
     TestRestTemplate http;
@@ -67,7 +71,7 @@ class WeeklyAssignmentTest {
             answers.add(Map.of("questionText", "2 + " + i, "chosenAnswer", ok ? "1" : "2", "correctAnswer", "1", "correct", ok));
         }
         return status("/api/learn/sessions", HttpMethod.POST, token,
-                Map.of("profileId", kidId, "topic", topic, "stage", 1, "mode", mode, "answers", answers));
+                Map.of("profileId", kidId, "topic", topic, "stage", 1, "mode", mode, "answers", Banked.of(bank, kidId, topic, answers)));
     }
 
     @Test
