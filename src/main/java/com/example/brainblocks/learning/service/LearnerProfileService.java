@@ -24,13 +24,7 @@ public class LearnerProfileService {
     }
 
     public ProfileResponse createProfile(CreateProfileRequest request) {
-        String name = request.getName() == null ? "" : request.getName().trim();
-        if (name.isEmpty()) {
-            throw new ResponseStatusException(BAD_REQUEST, "Name is required");
-        }
-        if (name.length() > 24) {
-            name = name.substring(0, 24);
-        }
+        String name = Names.clean(request.getName(), 24, "השם");
         Avatar avatar = parseEnum(Avatar.class, request.getAvatar(), "avatar");
         LearnerProfile profile = new LearnerProfile(name, avatar);
         return ProfileResponse.fromEntity(profileRepository.save(profile));

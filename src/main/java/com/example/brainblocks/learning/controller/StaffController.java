@@ -203,7 +203,7 @@ public class StaffController {
     }
 
     private static String className(Object raw) {
-        String n = raw == null ? "" : raw.toString().trim();
+        String n = com.example.brainblocks.learning.service.Names.clean(raw, 31, "שם הכיתה");
         if (n.isEmpty() || n.length() > 30) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "שם כיתה: 1 עד 30 תווים");
         return n;
     }

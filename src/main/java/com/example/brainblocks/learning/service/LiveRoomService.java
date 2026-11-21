@@ -754,7 +754,8 @@ public class LiveRoomService {
     }
 
     private static String clean(Object raw, int max, String what) {
-        String s = raw == null ? "" : raw.toString().strip().replaceAll("\\s+", " ");
+        // 2026-11-21 (security pass): hidden / direction-flipping characters out, like every name
+        String s = raw == null || raw.toString().isBlank() ? "" : Names.clean(raw, max + 1, what);
         if (s.isEmpty() || s.length() > max) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, what + ": 1 עד " + max + " תווים");
         return s;
     }
