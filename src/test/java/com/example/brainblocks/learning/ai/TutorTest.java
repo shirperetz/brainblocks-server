@@ -59,4 +59,21 @@ class TutorTest {
         assertEquals("704 = 700 + 4", Tutor.split(704));
         assertEquals("8", Tutor.split(8));
     }
+
+    /** 2026-11-21: the new topics get the generator's own hint, not a wrong "a + b" explanation. */
+    @Test
+    void newTopicsAreLeftToTheirOwnHint() {
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("כמה זה 19 + 3 × 3?", 0));
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("כמה זה (4 + 7) × 2?", 0));
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("מה x? x + 10 = 13", 0));
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("עגלו את 72 לעשרות הקרובות", 0));
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("3 מטר = כמה סנטימטרים?", 0));
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("איך כותבים 13 שלמים ו-5 עשיריות?", 0));
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("רדיוס העיגול 9 ס״מ. מה השטח? (π ≈ 3.14)", 0));
+        org.junit.jupiter.api.Assertions.assertNull(Tutor.explain("קובייה שצלעה 2 ס״מ. מה שטח הפנים שלה (סכום שטחי 6 הפאות)?", 0));
+        org.junit.jupiter.api.Assertions.assertNull(com.example.brainblocks.learning.ai.MistakeHint.visual("כמה זה 19 + 3 × 3?"));
+        // the old ones still get the tutor
+        org.junit.jupiter.api.Assertions.assertNotNull(Tutor.explain("כמה זה 19 + 3?", 0));
+        org.junit.jupiter.api.Assertions.assertNotNull(Tutor.explain("2/7 + 3/7 = ?", 0));
+    }
 }

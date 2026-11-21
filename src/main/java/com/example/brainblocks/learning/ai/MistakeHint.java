@@ -69,6 +69,7 @@ public final class MistakeHint {
      */
     public static Map<String, Object> visual(String question) {
         if (question == null) return null;
+        if (Tutor.outOfScope(question)) return null; // 2026-11-21: e.g. "19 + 3 × 3" is not "19 + 3"
         Matcher m = ARITH.matcher(question);
         if (m.find() && !question.contains("?" + " =") && !question.contains("החסר")) {
             int a = Integer.parseInt(m.group(1)), b = Integer.parseInt(m.group(3));

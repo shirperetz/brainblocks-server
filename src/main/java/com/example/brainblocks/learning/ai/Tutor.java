@@ -29,9 +29,13 @@ public final class Tutor {
         if (question == null) return null;
         String q = question.trim();
         int v = Math.floorMod(variant, 2);
+        // 2026-11-21: the new decimals / circle / volume questions look like fractions or area to the
+        // checks below ("עשיריות", "π ≈", "נפח") - they get the generator's own hint.
+        if (NEW_BEFORE_FRACTIONS.matcher(q).find()) return null;
         // 2026-11-11: fractions and geometry first - "2/7 + 3/7" must not be read as "7 + 3".
         Way fg = fractionOrGeometry(q, v);
         if (fg != null) return fg;
+        if (outOfScope(q)) return null; // 2026-11-21: after fractions/geometry, which know their own forms
         Matcher s = SERIES.matcher(q);
         if (s.find()) return series(Long.parseLong(s.group(3)), Long.parseLong(s.group(4)), v, q);
         if (q.contains("המספר הגדול ביותר") || q.contains("המספר הקטן ביותר")) return comparison(v, q);
@@ -41,6 +45,25 @@ public final class Tutor {
             return arithmetic(Long.parseLong(a.group(1)), a.group(2), Long.parseLong(a.group(3)), v, q);
         }
         return wordProblem(q, v);
+    }
+
+    private static final Pattern OPERATOR = Pattern.compile("\\s[+\\-\u2212\u00d7\u00f7]\\s");
+    private static final Pattern NEW_BEFORE_FRACTIONS = Pattern.compile("(שלמים|שלם אחד).*עשירי|עשירי.*(שלמים|שלם אחד)|π ≈|שטח הפנים|נפח|קובייה|תיבה");
+    private static final Pattern NEW_TOPIC_WORDS = Pattern.compile(
+            "עגלו|בערך|מתחלק ב|מחלק של|המחלק המשותף|כפולה משותפת|ראשוני|בגרף|ממוצע|סיכוי|הכי סביר|יחס|קנה מידה|רדיוס|קוטר|נפח|שטח הפנים|= כמה|גרם = [?]|דקות = [?]|קמ״ש|הנחה|זוגי");
+
+    /**
+     * 2026-11-21 (the night's screenshot: "19 + 3 × 3" was explained as "19 + 3"): questions this tutor
+     * doesn't really understand - two operators, brackets, x, %, decimals, or the new topics (rounding,
+     * divisibility, data, ratio, measurement...). For them the generator's own hint is shown instead.
+     */
+    public static boolean outOfScope(String q) {
+        if (q == null) return true;
+        Matcher ops = OPERATOR.matcher(q);
+        int n = 0;
+        while (ops.find()) n++;
+        return n >= 2 || q.matches(".*\\(\\s*\\d.*") || q.matches(".*(?<![A-Za-z])x(?![A-Za-z]).*") || q.contains("%")
+                || q.matches(".*\\d\\.\\d.*") || NEW_TOPIC_WORDS.matcher(q).find();
     }
 
     // ---- kinds --------------------------------------------------------------------------------
