@@ -47,6 +47,7 @@ public final class GradeTopics {
         if (grade == null || topic == null) return true;
         // 2026-11-21: the new topics - a grade has them when it has at least one of their levels.
         if (ExtraTopicsQuestions.handles(topic)) return ExtraTopicsQuestions.levelCap(topic, grade) > 0;
+        if (topic == Topic.MEITZAV) return grade == Grade.G5 || grade == Grade.G6;
         return BY_GRADE.getOrDefault(grade, UPPER).contains(topic);
     }
 }

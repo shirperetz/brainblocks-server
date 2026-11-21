@@ -48,7 +48,7 @@ public final class AdvancedLevels {
         List<Map<String, Object>> out = new ArrayList<>();
         for (var e : byTopic.entrySet()) {
             List<LearnerAnswer> recent = e.getValue().subList(0, Math.min(RECENT, e.getValue().size()));
-            if (recent.size() < MIN || e.getKey() == Topic.MIXED) continue;
+            if (recent.size() < MIN || e.getKey() == Topic.MIXED || e.getKey() == Topic.MEITZAV) continue;
             long right = recent.stream().filter(LearnerAnswer::isCorrect).count();
             int pct = (int) Math.round(right * 100.0 / recent.size());
             Grade now = effective(p, e.getKey());

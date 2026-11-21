@@ -51,7 +51,10 @@ public enum Topic {
     DATA,
     CIRCLE,
     VOLUME,
-    EQUATIONS;
+    EQUATIONS,
+    // 2026-11-21: a round built like the grade-5 מיצ"ב (fractions+decimals ~35%, whole numbers ~30%,
+    // geometry+measurement ~25%, data ~10%) - each question is made by its own topic's generator.
+    MEITZAV;
 
     /** True for the island mini-games, whose questions are generated client-side. */
     public boolean isGame() {

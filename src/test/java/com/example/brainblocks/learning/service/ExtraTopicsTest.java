@@ -191,6 +191,31 @@ class ExtraTopicsTest {
         }
     }
 
+    /** The מיצ"ב round: about 35/30/25/10, only ה׳ material for a ה׳ child, not offered to ד׳. */
+    @Test
+    void meitzavRoundFollowsTheWeights() {
+        assertTrue(GradeTopics.allowed(Topic.MEITZAV, Grade.G5));
+        assertFalse(GradeTopics.allowed(Topic.MEITZAV, Grade.G4));
+        java.util.Map<String, Integer> parts = new java.util.HashMap<>();
+        int n = 0;
+        for (int k = 0; k < 100; k++) {
+            for (QuestionResponse q : service.generate(Topic.MEITZAV, Grade.G5, Difficulty.MEDIUM, 3, 20)) {
+                assertTrue(GradeTopics.allowed(q.getTopic(), Grade.G5), q.getTopic() + " is not ה׳ material");
+                assertNotEquals(Topic.PERCENT, q.getTopic());
+                String part = switch (q.getTopic()) {
+                    case FRACTIONS, DECIMALS -> "fractions";
+                    case ANGLES, ANGLE_CALC, PERIMETER, AREA, MEASURE, VOLUME -> "geometry";
+                    case DATA -> "data";
+                    default -> "numbers";
+                };
+                parts.merge(part, 1, Integer::sum);
+                n++;
+            }
+        }
+        double f = parts.get("fractions") * 100.0 / n, w = parts.get("numbers") * 100.0 / n, g = parts.get("geometry") * 100.0 / n, d = parts.get("data") * 100.0 / n;
+        assertTrue(Math.abs(f - 35) < 4 && Math.abs(w - 30) < 4 && Math.abs(g - 25) < 4 && Math.abs(d - 10) < 3, parts.toString());
+    }
+
     static boolean prime(int n) {
         if (n < 2) return false;
         for (int d = 2; d * d <= n; d++) if (n % d == 0) return false;

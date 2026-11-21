@@ -90,7 +90,7 @@ public class LearningQuestionService {
 
         List<QuestionResponse> questions = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            Topic actual = topic == Topic.MIXED ? randomTopicForGrade(g) : topic;
+            Topic actual = topic == Topic.MIXED ? randomTopicForGrade(g) : topic == Topic.MEITZAV ? meitzavTopic(g) : topic;
             // Mixed practice, daily challenge and 60 seconds show no picture - picture questions stay out.
             questions.add(actual == Topic.FRACTIONS ? fractionGeometry.fraction(i, g, s, topic != Topic.MIXED)
                     : actual == Topic.GEOMETRY ? fractionGeometry.geometry(i, s, topic != Topic.MIXED)
@@ -104,6 +104,28 @@ public class LearningQuestionService {
             if (q.getSkill() == null) q.withSkill(Skills.of(null, q.getTopic(), s, q.getText()));
         }
         return questions;
+    }
+
+    /**
+     * 2026-11-21: the grade-5 מיצ"ב weights (ראמ"ה, מפרט תש"ף): fractions and decimals ~35%, whole numbers
+     * ~30%, geometry and measurement ~25%, data and chance ~10%. Only topics of the child's grade.
+     */
+    private static final Topic[][] MEITZAV_PARTS = {
+            {Topic.FRACTIONS, Topic.DECIMALS},
+            {Topic.ADDITION, Topic.SUBTRACTION, Topic.MULTIPLICATION, Topic.DIVISION, Topic.WORD_PROBLEMS,
+                    Topic.ORDER_OPS, Topic.DIVISIBILITY, Topic.ROUNDING},
+            {Topic.ANGLES, Topic.ANGLE_CALC, Topic.PERIMETER, Topic.AREA, Topic.MEASURE, Topic.VOLUME},
+            {Topic.DATA},
+    };
+    private static final int[] MEITZAV_WEIGHTS = {35, 30, 25, 10};
+
+    Topic meitzavTopic(Grade grade) {
+        int r = random.nextInt(100), part = 0;
+        for (int acc = MEITZAV_WEIGHTS[0]; r >= acc && part < 3; acc += MEITZAV_WEIGHTS[++part]) { }
+        List<Topic> pool = new ArrayList<>();
+        for (Topic t : MEITZAV_PARTS[part]) if (GradeTopics.allowed(t, grade)) pool.add(t);
+        if (pool.isEmpty()) pool.add(Topic.ADDITION);
+        return pool.get(random.nextInt(pool.size()));
     }
 
     private Topic randomTopicForGrade(Grade grade) {
@@ -133,7 +155,7 @@ public class LearningQuestionService {
             case COMPARISON -> comparison(id, grade, diff, stage);
             case SEQUENCES -> sequences(id, grade, diff, stage);
             case WORD_PROBLEMS -> wordProblem(id, grade, diff, stage);
-            case MIXED -> addition(id, grade, diff, stage); // MIXED is resolved earlier; safety fallback
+            case MIXED, MEITZAV -> addition(id, grade, diff, stage); // resolved earlier; safety fallback
             case FRACTIONS -> fractionGeometry.fraction(id, grade, stage, true);
             case GEOMETRY -> fractionGeometry.geometry(id, stage, true);
             case ANGLES, ANGLE_CALC, PERIMETER, AREA -> fractionGeometry.geometryTrack(id, topic, stage, true, grade);
