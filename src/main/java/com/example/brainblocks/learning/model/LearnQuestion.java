@@ -60,6 +60,8 @@ public class LearnQuestion {
     private String chosenAnswer;
 
     private Boolean correct;
+    /** 2026-11-21 (security pass): sent WITH its answer (the 60-second game) - counts only in a TIMED round. */
+    private Boolean revealed;
 
     private LocalDateTime answeredAt;
 
@@ -117,6 +119,9 @@ public class LearnQuestion {
     public java.util.List<String> optionList() {
         return java.util.List.of(options.split("\u001F", -1));
     }
+
+    public boolean isRevealed() { return Boolean.TRUE.equals(revealed); }
+    public void setRevealed(boolean r) { this.revealed = r ? Boolean.TRUE : null; }
 
     public Long getId() { return id; }
     public Long getProfileId() { return profileId; }

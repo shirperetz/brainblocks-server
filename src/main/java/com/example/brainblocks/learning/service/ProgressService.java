@@ -106,6 +106,8 @@ public class ProgressService {
                 if (a.getBankId() == null) continue;
                 bank.findById(a.getBankId())
                         .filter(q -> q.getProfileId().equals(request.getProfileId()))
+                        // 2026-11-21: answers sent in advance (60 seconds) count only in a TIMED round
+                        .filter(q -> !q.isRevealed() || "TIMED".equalsIgnoreCase(String.valueOf(request.getMode())))
                         .ifPresent(q -> {
                             verified.add(a);
                             String chosen = q.getChosenAnswer() != null ? q.getChosenAnswer() : a.getChosenAnswer();

@@ -299,7 +299,7 @@ public class IsleService {
             java.util.Set<Long> seenBank = new java.util.HashSet<>();
             for (AnswerDto a : list) {
                 var q = a.getBankId() == null || bank == null ? null : bank.findById(a.getBankId()).filter(x -> x.getProfileId().equals(profileId)).orElse(null);
-                if (q == null || !seenBank.add(q.getId())) {
+                if (q == null || q.isRevealed() || !seenBank.add(q.getId())) {
                     a.setCorrect(false);
                     continue;
                 }

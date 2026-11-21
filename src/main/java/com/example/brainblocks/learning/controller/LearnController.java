@@ -277,6 +277,7 @@ public class LearnController {
                     (q.getTopic() != null ? q.getTopic() : t).name(), stage, grade, q.getText(), q.getOptions(),
                     q.getOptions().get(q.getCorrectIndex()), q.getSkill(), q.getExplanation()));
         }
+        if (!secure) rows.forEach(r -> r.setRevealed(true)); // the phone saw the answer
         var saved = bank.saveAll(rows);
         List<QuestionResponse> out = new java.util.ArrayList<>(fresh.size());
         for (int i = 0; i < fresh.size(); i++) {
@@ -297,6 +298,8 @@ public class LearnController {
                                               @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         var q = bank.findById(bankId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "אין שאלה כזאת"));
         own(q.getProfileId(), me);
+        // 2026-11-21: a question that went out with its answer isn't judged here (a script could use it)
+        if (q.isRevealed()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "השאלה הזאת לא נבדקת כאן");
         boolean right = q.answer(body.get("answer"));
         bank.save(q);
         Map<String, Object> out = new java.util.LinkedHashMap<>();

@@ -115,4 +115,21 @@ class CheatGuardTest {
         assertThat(s.getCorrect()).isEqualTo(6);
         assertThat(s.getStars()).isEqualTo(3);
     }
+
+    @Test
+    void anAnswerSentInAdvanceCountsOnlyInTheSixtySecondGame() {
+        Long id = kid();
+        LearnQuestion seen = new LearnQuestion(id, "ADDITION", 1, "G3", "2 + 3", List.of("5", "6"), "5", null, null);
+        seen.setRevealed(true);
+        seen = bank.save(seen);
+        List<AnswerDto> list = new ArrayList<>();
+        AnswerDto a = ans("5", "5", true);
+        a.setBankId(seen.getId());
+        list.add(a);
+        assertThat(progress.submitSession(round(id, "ADDITION", list)).getCorrect()).isZero();
+        SubmitSessionRequest timed = round(id, "MIXED", List.of(a));
+        timed.setMode("TIMED");
+        a.setCorrect(true);
+        assertThat(progress.submitSession(timed).getCorrect()).isEqualTo(1);
+    }
 }
