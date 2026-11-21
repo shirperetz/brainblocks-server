@@ -154,7 +154,7 @@ public class TeacherInsightsService {
         for (int i = wrong.size() - 1; i >= 0; i--) {
             LearnerAnswer a = wrong.get(i);
             String k = Mistakes.classify(a.getTopic(), a.getQuestionText(), a.getCorrectAnswer(), a.getGivenAnswer());
-            if (k != null) mistakeKinds.merge(k, 1, Integer::sum);
+            if (k != null && Mistakes.known(k)) mistakeKinds.merge(k, 1, Integer::sum);
             if (examples.size() < 4 && seen.add(a.getQuestionText())) {
                 Map<String, Object> ex = new LinkedHashMap<>();
                 ex.put("text", a.getQuestionText());
