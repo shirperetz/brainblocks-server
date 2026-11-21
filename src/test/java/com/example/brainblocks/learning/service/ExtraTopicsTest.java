@@ -123,7 +123,7 @@ class ExtraTopicsTest {
     static String solve(String text) {
         Matcher m;
         if ((m = Pattern.compile("^כמה זה ([0-9 +\\-×÷()]+)\\?$").matcher(text)).find()) return String.valueOf(eval(m.group(1)));
-        if ((m = Pattern.compile("^מה x\\? (.+) = (\\d+)$").matcher(text)).find()) {
+        if ((m = Pattern.compile("^מצאו את x במשוואה: (.+) = (\\d+)$").matcher(text)).find()) {
             String lhs = m.group(1);
             long r = Long.parseLong(m.group(2));
             for (long x = 0; x <= 2000; x++) if (eval(lhs.replace("x", String.valueOf(x))) == r) return String.valueOf(x);

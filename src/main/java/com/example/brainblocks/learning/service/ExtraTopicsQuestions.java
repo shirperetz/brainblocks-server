@@ -854,7 +854,8 @@ public final class ExtraTopicsQuestions {
             case 5 -> { int k = rand(2, 6), b = rand(1, 15); eq = k + " × x + " + b + " = " + (k * x + b); wrong = List.of((k * x + b) / k, k * x, x + b); why = "מורידים " + b + ": " + k * x + ", ומחלקים ב-" + k + ": " + x; }
             default -> { int k = rand(2, 6), b = rand(1, 15); eq = k + " × x - " + b + " = " + (k * x - b); wrong = List.of((k * x - b) / k, x - 1 > 0 ? x - 1 : x + 2, k * x); why = "מוסיפים " + b + ": " + k * x + ", ומחלקים ב-" + k + ": " + x; }
         }
-        return num(id, Topic.EQUATIONS, "מה x? " + eq, x, wrong,
+        // "מצאו את x במשוואה:" - not "מה x?": in Hebrew the "?" jumped to the left of the x ("?x מה")
+        return num(id, Topic.EQUATIONS, "מצאו את x במשוואה: " + eq, x, wrong,
                 "x הוא מספר שמסתתר. עושים את הפעולה ההפוכה: חיבור ↔ חיסור, כפל ↔ חילוק.",
                 why + ", ולכן x = " + x + ".", null).withSkill(level <= 2 ? "EQ_ADD" : level <= 4 ? "EQ_MUL" : "EQ_TWO_STEP");
     }
