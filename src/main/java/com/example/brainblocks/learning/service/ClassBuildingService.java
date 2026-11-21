@@ -72,6 +72,7 @@ public class ClassBuildingService {
     @org.springframework.transaction.annotation.Transactional
     public Map<String, Object> donate(LearnerProfile child, int coins) {
         if (items == null || shop == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
+        profiles.lockById(child.getId()); // 2026-11-21: two taps can't give the same coins twice
         Map<String, Object> before = forChild(child);
         if (before == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "צריך להיות בכיתה כדי לתרום לבניין");
         if (Boolean.TRUE.equals(before.get("done"))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "הבניין כבר גמור השבוע 🎉");

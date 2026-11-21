@@ -390,6 +390,7 @@ public class IslandShopService {
 
     @Transactional
     public Map<String, Object> build(Long profileId, int isle, int slot, String kind) {
+        lockSpender(profileId);
         Kind k = CATALOG.get(kind);
         if (k == null) throw bad("אין דבר כזה בחנות");
         if (k.season() != null && !k.season().equals(seasonOf(isle))) throw bad("זה מתאים רק לאי בעונה אחרת");
@@ -411,6 +412,7 @@ public class IslandShopService {
 
     @Transactional
     public Map<String, Object> upgrade(Long profileId, int isle, int slot) {
+        lockSpender(profileId);
         Map<String, Object> st = state(profileId, isle); // the island must be hers
         LearnIslandItem it = buildingAt(profileId, isle, slot);
         Kind k = CATALOG.get(it.getKind());
@@ -428,6 +430,7 @@ public class IslandShopService {
     /** Takes a building down so something else can stand there; what it cost comes back in full. */
     @Transactional
     public Map<String, Object> remove(Long profileId, int isle, int slot) {
+        lockSpender(profileId);
         state(profileId, isle);
         items.delete(buildingAt(profileId, isle, slot));
         return state(profileId, isle);
@@ -439,6 +442,7 @@ public class IslandShopService {
 
     @Transactional
     public Map<String, Object> buyLand(Long profileId, int isle) {
+        lockSpender(profileId);
         Map<String, Object> st = state(profileId, isle);
         Object cost = st.get("nextLandCost");
         if (cost == null) throw bad("האי כבר בגודל המלא");
@@ -452,6 +456,7 @@ public class IslandShopService {
     @Transactional
     @SuppressWarnings("unchecked")
     public Map<String, Object> buyIsle(Long profileId) {
+        lockSpender(profileId);
         Map<String, Object> st = state(profileId, 0);
         Map<String, Object> next = (Map<String, Object>) st.get("nextIsle");
         if (next == null) throw bad("קודם בונים את כל האי האחרון - כל 32 המקומות");
@@ -464,11 +469,20 @@ public class IslandShopService {
     @Transactional
     @SuppressWarnings("unchecked")
     public Map<String, Object> openChest(Long profileId, String isleKey) {
+        lockSpender(profileId);
         List<Map<String, Object>> ready = (List<Map<String, Object>>) state(profileId).get("chests");
         if (ready.stream().noneMatch(c -> c.get("isleKey").equals(isleKey))) throw bad("אין כאן תיבה לפתוח");
         items.save(new LearnIslandItem(profileId, "chest:" + isleKey, -1, 1));
         Map<String, Object> out = state(profileId);
         out.put("opened", CHEST_COINS);
         return out;
+    }
+
+    /** 2026-11-21 (security pass): one spend at a time per child (row lock until the transaction ends). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.brainblocks.learning.repository.LearnerProfileRepository spenders;
+
+    private void lockSpender(Long profileId) {
+        if (spenders != null) spenders.lockById(profileId);
     }
 }
