@@ -513,6 +513,20 @@ public class StaffController {
         return building.forClass(me, id);
     }
 
+    // 2026-11-21 (Shir chose): "what to teach tomorrow" + Meitzav readiness, per class
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.brainblocks.learning.service.TeacherInsightsService insights;
+
+    @GetMapping("/classes/{id}/tomorrow")
+    public Map<String, Object> tomorrow(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return insights.tomorrow(me, id);
+    }
+
+    @GetMapping("/classes/{id}/meitzav")
+    public Map<String, Object> meitzav(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return insights.meitzav(me, id);
+    }
+
     @PostMapping("/assignments/{id}/cancel")
     public Map<String, Object> cancelAssignment(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         assignments.cancel(me, id);

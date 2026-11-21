@@ -89,6 +89,9 @@ public class LearnQuestion {
 
     /** Records the first answer; returns whether THIS answer is right. */
     public boolean answer(String chosen) {
+        // 2026-11-21 (open answers): a typed number counts by its value - "1,250" = "1250", "3.50" = "3.5";
+        // it is then kept in the right answer's own spelling, so the round is judged the same way.
+        if (chosen != null && !correctAnswer.equals(chosen.trim()) && sameNumber(chosen, correctAnswer)) chosen = correctAnswer;
         boolean right = correctAnswer.equals(chosen == null ? null : chosen.trim());
         if (answeredAt == null) {
             chosenAnswer = cut(chosen, 120);
@@ -96,6 +99,19 @@ public class LearnQuestion {
             answeredAt = LocalDateTime.now();
         }
         return right;
+    }
+
+    static boolean sameNumber(String typed, String right) {
+        java.math.BigDecimal a = number(typed), b = number(right);
+        return a != null && b != null && a.compareTo(b) == 0;
+    }
+
+    /** A plain number (digits, one point, a minus, thousands commas/spaces) or null. */
+    static java.math.BigDecimal number(String s) {
+        if (s == null) return null;
+        String t = s.trim().replace('−', '-').replace(",", "").replace(" ", "").replace(String.valueOf((char) 0xA0), "");
+        if (!t.matches("-?[0-9]+([.][0-9]+)?")) return null;
+        return new java.math.BigDecimal(t);
     }
 
     public java.util.List<String> optionList() {
