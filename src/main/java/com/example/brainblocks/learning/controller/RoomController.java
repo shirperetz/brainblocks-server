@@ -34,7 +34,49 @@ public class RoomController {
     @PostMapping
     public Map<String, Object> create(@RequestBody Map<String, Object> body, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         Object t = body.get("topics");
-        return rooms.create(me, body.get("classId"), t instanceof List<?> l ? l : List.of(), body.get("minutes"), body.get("grade"));
+        // 2026-11-22: coins for the island (#5) and two groups (#9) - the teacher's choice
+        return rooms.create(me, body.get("classId"), t instanceof List<?> l ? l : List.of(), body.get("minutes"), body.get("grade"),
+                Boolean.TRUE.equals(body.get("coins")), Boolean.TRUE.equals(body.get("teams")));
+    }
+
+    // ---- 2026-11-22: saved rooms (#10) and the warm-up before a room ----
+
+    @GetMapping("/templates")
+    public List<Map<String, Object>> templates(@RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return rooms.templates(me);
+    }
+
+    /** body: { name, classId?, grade?, topics, minutes, coins?, teams? } */
+    @PostMapping("/templates")
+    public Map<String, Object> saveTemplate(@RequestBody Map<String, Object> body, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return rooms.saveTemplate(me, body);
+    }
+
+    @PostMapping("/templates/{tid}/delete")
+    public Map<String, Object> deleteTemplate(@PathVariable long tid, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        rooms.deleteTemplate(me, tid);
+        return Map.of("ok", true);
+    }
+
+    @PostMapping("/templates/{tid}/open")
+    public Map<String, Object> openTemplate(@PathVariable long tid, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return rooms.openTemplate(me, tid);
+    }
+
+    /** The teacher opened "new room": wake the question code up in the background (staff only, answers at once). */
+    @PostMapping("/warmup")
+    public Map<String, Object> warmup(@RequestBody(required = false) Map<String, Object> body, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        rooms.templates(me); // staff check
+        Object g = body == null ? null : body.get("grade");
+        com.example.brainblocks.learning.model.Grade grade;
+        try {
+            grade = g == null ? null : com.example.brainblocks.learning.model.Grade.valueOf(g.toString());
+        } catch (IllegalArgumentException e) {
+            grade = null;
+        }
+        final com.example.brainblocks.learning.model.Grade target = grade;
+        java.util.concurrent.CompletableFuture.runAsync(() -> rooms.warmUp(target));
+        return Map.of("ok", true);
     }
 
     @GetMapping("/{id}/live")

@@ -533,6 +533,12 @@ public class StaffController {
         return insights.tomorrow(me, id);
     }
 
+    /** 2026-11-22: the class's week - who practised, who improved, what is still hard. */
+    @GetMapping("/classes/{id}/weekly")
+    public Map<String, Object> weekly(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        return insights.weekly(me, id);
+    }
+
     @GetMapping("/classes/{id}/meitzav")
     public Map<String, Object> meitzav(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         return insights.meitzav(me, id);

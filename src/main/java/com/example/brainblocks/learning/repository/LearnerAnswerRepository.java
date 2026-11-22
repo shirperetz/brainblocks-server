@@ -20,4 +20,7 @@ public interface LearnerAnswerRepository extends JpaRepository<LearnerAnswer, Lo
     /** 2026-11-14 (the class island): right answers inside one past week. */
     long countByProfileIdAndCorrectTrueAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(Long profileId, java.time.LocalDateTime from,
                                                                                        java.time.LocalDateTime to);
+
+    /** 2026-11-22 the teacher's weekly report: the class's answers from a date on. */
+    List<LearnerAnswer> findByProfileIdInAndCreatedAtGreaterThanEqual(java.util.Collection<Long> profileIds, java.time.LocalDateTime since);
 }

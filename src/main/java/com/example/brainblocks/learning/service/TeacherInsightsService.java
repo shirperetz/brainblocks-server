@@ -84,6 +84,79 @@ public class TeacherInsightsService {
         return m;
     }
 
+    // ---- 2026-11-22 (Shir: "a weekly report for the teacher") ------------------------------------
+    // Who practised this week, who improved or dropped against last week, and what is still hard.
+    // The last 7 days against the 7 before; a child's accuracy counts only with 10+ answers in a week.
+
+    static final int WEEK_MIN_ANSWERS = 10;
+
+    public Map<String, Object> weekly(Long viewer, Long classId) {
+        List<LearnerProfile> kids = access.visibleChildren(viewer, classId);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime weekAgo = now.minusDays(7);
+        LocalDateTime twoWeeks = now.minusDays(14);
+        List<Map<String, Object>> practiced = new ArrayList<>();
+        List<Map<String, Object>> notPracticed = new ArrayList<>();
+        List<Map<String, Object>> improved = new ArrayList<>();
+        List<Map<String, Object>> dropped = new ArrayList<>();
+        Map<String, int[]> bySkill = new HashMap<>();
+        int totalAnswers = 0, totalRight = 0;
+        for (LearnerProfile p : kids) {
+            int[] thisWeek = new int[2], lastWeek = new int[2];
+            for (LearnerAnswer a : answers.findTop600ByProfileIdOrderByIdDesc(p.getId())) {
+                if (a.getCreatedAt() == null || a.getCreatedAt().isBefore(twoWeeks)) continue;
+                if (a.getTopic() != null && a.getTopic().isGame()) continue;
+                boolean recent = a.getCreatedAt().isAfter(weekAgo);
+                int[] w = recent ? thisWeek : lastWeek;
+                w[0]++;
+                if (a.isCorrect()) w[1]++;
+                if (recent) {
+                    String s = a.getSkill() == null ? String.valueOf(a.getTopic()) : a.getSkill();
+                    int[] t = bySkill.computeIfAbsent(s, k -> new int[2]);
+                    t[0]++;
+                    if (a.isCorrect()) t[1]++;
+                }
+            }
+            totalAnswers += thisWeek[0];
+            totalRight += thisWeek[1];
+            Map<String, Object> row = kid(p);
+            row.put("answers", thisWeek[0]);
+            row.put("pct", thisWeek[0] >= WEEK_MIN_ANSWERS ? pct(thisWeek[1], thisWeek[0]) : null);
+            if (thisWeek[0] == 0) notPracticed.add(kid(p));
+            else practiced.add(row);
+            if (thisWeek[0] >= WEEK_MIN_ANSWERS && lastWeek[0] >= WEEK_MIN_ANSWERS) {
+                int diff = pct(thisWeek[1], thisWeek[0]) - pct(lastWeek[1], lastWeek[0]);
+                Map<String, Object> m = kid(p);
+                m.put("from", pct(lastWeek[1], lastWeek[0]));
+                m.put("to", pct(thisWeek[1], thisWeek[0]));
+                if (diff >= 10) improved.add(m);
+                if (diff <= -10) dropped.add(m);
+            }
+        }
+        practiced.sort(Comparator.comparingInt(m -> -(Integer) m.get("answers")));
+        List<Map<String, Object>> hard = bySkill.entrySet().stream()
+                .filter(e -> e.getValue()[0] >= 8 && pct(e.getValue()[1], e.getValue()[0]) < 75)
+                .sorted(Comparator.comparingInt(e -> pct(e.getValue()[1], e.getValue()[0])))
+                .limit(3)
+                .map(e -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("name", Skills.name(e.getKey()));
+                    m.put("pct", pct(e.getValue()[1], e.getValue()[0]));
+                    return m;
+                })
+                .toList();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("children", kids.size());
+        out.put("answers", totalAnswers);
+        out.put("pct", pct(totalRight, totalAnswers));
+        out.put("practiced", practiced);
+        out.put("notPracticed", notPracticed);
+        out.put("improved", improved);
+        out.put("dropped", dropped);
+        out.put("hard", hard);
+        return out;
+    }
+
     // ---- "מה ללמד מחר" ---------------------------------------------------------------------------
 
     public Map<String, Object> tomorrow(Long viewer, Long classId) {
