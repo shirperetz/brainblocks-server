@@ -35,6 +35,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Configuration
 public class PublicAccessConfig implements WebMvcConfigurer {
 
+    /** 2026-11-24: the largest request body /api accepts (the biggest real one - a round of 10 answers - is ~3 KB). */
+    static final long MAX_BODY = 100_000;
+
+
     private final String clientDist;
     /** On the public host (profile "cloud") every request comes through its proxy: trust X-Forwarded-For. */
     private final boolean trustForwarded;
@@ -177,6 +181,19 @@ public class PublicAccessConfig implements WebMvcConfigurer {
             protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
                     throws ServletException, IOException {
                 String path = req.getRequestURI();
+                // 2026-11-24 (security review): a 3 MB JSON body was read whole before being refused - on a
+                // 512 MB server a few of those at once could take it down. Every real request is a few KB.
+                if (path.startsWith("/api/") && !"GET".equals(req.getMethod()) && !"OPTIONS".equals(req.getMethod())
+                        && req.getContentLengthLong() > MAX_BODY) {
+                    res.setStatus(413);
+                    res.setContentType("application/json;charset=UTF-8");
+                    res.getWriter().write("{\"message\":\"הבקשה גדולה מדי\"}");
+                    return;
+                }
+                // a body sent without a length (chunked) is counted as it is read and cut at the same limit
+                if (path.startsWith("/api/") && req.getContentLengthLong() < 0 && !"GET".equals(req.getMethod())) {
+                    req = new LimitedBody(req, MAX_BODY);
+                }
                 if (path.startsWith("/api/")) {
                     long now = clock.millis();
                     if (now - lastCleanup > 10 * MINUTE) {
@@ -231,5 +248,38 @@ public class PublicAccessConfig implements WebMvcConfigurer {
         FilterRegistrationBean<OncePerRequestFilter> bean = new FilterRegistrationBean<>(filter);
         bean.setOrder(0);
         return bean;
+    }
+
+    /** 2026-11-24: reading past [max] bytes of a body with no declared length fails the request. */
+    static final class LimitedBody extends jakarta.servlet.http.HttpServletRequestWrapper {
+        private final long max;
+
+        LimitedBody(HttpServletRequest req, long max) {
+            super(req);
+            this.max = max;
+        }
+
+        @Override
+        public jakarta.servlet.ServletInputStream getInputStream() throws IOException {
+            jakarta.servlet.ServletInputStream in = super.getInputStream();
+            return new jakarta.servlet.ServletInputStream() {
+                private long read;
+
+                private void count(long n) throws IOException {
+                    if (n > 0 && (read += n) > max) throw new IOException("request body too large");
+                }
+
+                @Override public int read() throws IOException { int b = in.read(); if (b >= 0) count(1); return b; }
+                @Override public int read(byte[] b, int off, int len) throws IOException { int n = in.read(b, off, len); count(n); return n; }
+                @Override public boolean isFinished() { return in.isFinished(); }
+                @Override public boolean isReady() { return in.isReady(); }
+                @Override public void setReadListener(jakarta.servlet.ReadListener l) { in.setReadListener(l); }
+            };
+        }
+
+        @Override
+        public java.io.BufferedReader getReader() throws IOException {
+            return new java.io.BufferedReader(new java.io.InputStreamReader(getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+        }
     }
 }
