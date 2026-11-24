@@ -53,6 +53,7 @@ public final class Mistakes {
     public static final String CIRCLE_FORMULA = "CIRCLE_FORMULA";
     public static final String VOLUME_FORMULA = "VOLUME_FORMULA";
     public static final String INVERSE_OP = "INVERSE_OP";
+    public static final String EXPAND_RULE = "EXPAND_RULE";
     public static final String UNKNOWN = "UNKNOWN";
 
     /** For the teacher / parent - what probably goes wrong, and what to practise. */
@@ -114,6 +115,8 @@ public final class Mistakes {
                 "קוטר = 2 רדיוסים. היקף = קוטר × 3.14, שטח = רדיוס × רדיוס × 3.14."});
         INFO.put(VOLUME_FORMULA, new String[] {"מתבלבל/ת בין נפח, שטח ושטח פנים",
                 "נפח = כמה קוביות בפנים (אורך × רוחב × גובה); שטח פנים = סכום שטחי כל הפאות."});
+        INFO.put(EXPAND_RULE, new String[] {"בהרחבת שבר מוסיף/ה במקום לכפול, או כופל/ת רק למעלה או רק למטה",
+                "כופלים את המספר שלמעלה ואת המספר שלמטה באותו מספר: 2/3 -> פי 3 -> 6/9. לבדוק: אותו 'פי' בשניהם."});
         INFO.put(INVERSE_OP, new String[] {"לא משתמש/ת בפעולה ההפוכה כדי למצוא את x",
                 "x + 5 = 12 -> מחסירים 5. 3 × x = 12 -> מחלקים ב-3. לבדוק: מציבים את התשובה."});
     }
@@ -195,6 +198,8 @@ public final class Mistakes {
                 return CIRCLE_FORMULA;
             case VOLUME:
                 return VOLUME_FORMULA;
+            case FRAC_EXPAND:
+                return slip && !t.startsWith("איזה") ? COUNTING : EXPAND_RULE;
             case EQUATIONS:
                 return slip ? COUNTING : INVERSE_OP;
             default:

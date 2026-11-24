@@ -25,7 +25,7 @@ class ExtraTopicsTest {
 
     static final List<Topic> NEW = List.of(Topic.EVEN_ODD, Topic.MAKE_TEN, Topic.ORDER_OPS, Topic.ROUNDING,
             Topic.DIVISIBILITY, Topic.MEASURE, Topic.DECIMALS, Topic.PERCENT, Topic.RATIO, Topic.DATA,
-            Topic.CIRCLE, Topic.VOLUME, Topic.EQUATIONS);
+            Topic.CIRCLE, Topic.VOLUME, Topic.EQUATIONS, Topic.FRAC_EXPAND);
 
     final LearningQuestionService service = new LearningQuestionService();
 

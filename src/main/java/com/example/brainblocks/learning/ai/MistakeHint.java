@@ -50,6 +50,7 @@ public final class MistakeHint {
         FOR_CHILD.put(Mistakes.DATA_READING, "שימו את האצבע על העמודה, ולכו איתה בקו ישר אל המספר.");
         FOR_CHILD.put(Mistakes.CIRCLE_FORMULA, "קוטר זה פעמיים רדיוס. היקף = קוטר × 3.14, ושטח = רדיוס × רדיוס × 3.14.");
         FOR_CHILD.put(Mistakes.VOLUME_FORMULA, "נפח = אורך × רוחב × גובה - כמה קוביות נכנסות בפנים.");
+        FOR_CHILD.put(Mistakes.EXPAND_RULE, "בהרחבה כופלים - לא מוסיפים: את המספר שלמעלה ואת המספר שלמטה באותו מספר.");
         FOR_CHILD.put(Mistakes.INVERSE_OP, "עושים את הפעולה ההפוכה: אם הוסיפו ל-x - מחסירים, אם כפלו את x - מחלקים.");
     }
 

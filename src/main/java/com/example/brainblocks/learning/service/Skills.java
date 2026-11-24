@@ -179,6 +179,12 @@ public final class Skills {
         NAMES.put("PCT_DISCOUNT", "הנחה באחוזים");
         NAMES.put("PCT_WHAT_PERCENT", "כמה אחוז זה");
         NAMES.put("RATIO_SCALE", "יחס: על כל...");
+        NAMES.put("EXPAND_MISSING_TOP", "הרחבה: המספר החסר למעלה");
+        NAMES.put("EXPAND_MISSING_BOTTOM", "הרחבה: המספר החסר למטה");
+        NAMES.put("EXPAND_BY_HOW_MUCH", "בכמה הרחיבו?");
+        NAMES.put("EXPAND_WHICH", "איזה שבר הוא הרחבה");
+        NAMES.put("EXPAND_PAIR", "זוג שהורחב באותו מספר");
+        NAMES.put("EXPAND_BIG", "הרחבה במספרים גדולים");
         NAMES.put("RATIO_SIMPLIFY", "צמצום יחס");
         NAMES.put("RATIO_RECIPE", "יחס במתכון");
         NAMES.put("RATIO_SHARE", "חלוקה לפי יחס");

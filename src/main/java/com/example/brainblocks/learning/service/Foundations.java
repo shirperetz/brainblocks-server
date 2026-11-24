@@ -55,6 +55,7 @@ public final class Foundations {
         UNDER.put(Topic.EQUATIONS, List.of(ADD20, SUB20, TIMES));
         UNDER.put(Topic.PERCENT, List.of(TIMES, DIVIDE));
         UNDER.put(Topic.RATIO, List.of(TIMES, DIVIDE));
+        UNDER.put(Topic.FRAC_EXPAND, List.of(TIMES));
         UNDER.put(Topic.DECIMALS, List.of(ADD20, SUB20));
         UNDER.put(Topic.VOLUME, List.of(TIMES));
     }

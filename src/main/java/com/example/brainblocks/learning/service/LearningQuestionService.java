@@ -160,7 +160,7 @@ public class LearningQuestionService {
             case GEOMETRY -> fractionGeometry.geometry(id, stage, true);
             case ANGLES, ANGLE_CALC, PERIMETER, AREA -> fractionGeometry.geometryTrack(id, topic, stage, true, grade);
             case EVEN_ODD, MAKE_TEN, ORDER_OPS, ROUNDING, DIVISIBILITY, MEASURE, DECIMALS, PERCENT, RATIO,
-                 DATA, CIRCLE, VOLUME, EQUATIONS -> extra.question(id, topic, grade, stage, diff == Difficulty.HARD);
+                 DATA, CIRCLE, VOLUME, EQUATIONS, FRAC_EXPAND -> extra.question(id, topic, grade, stage, diff == Difficulty.HARD);
             // Island games build their own rounds in the client; a plain addition question is a safe fallback.
             case DRAGON, BALLOONS, BRIDGE, TRAIN, CLOCK, SHOP, COINS,
                  SHAPE_NAME, SHAPE_SIDES, SHAPE_PATTERN, GROUPS, SHARING, ARRAYS, PLACE_VALUE, NUMBER_LINE, BIGGER -> addition(id, grade, diff, stage);

@@ -36,7 +36,7 @@ public final class ExtraTopicsQuestions {
     public static boolean handles(Topic t) {
         return switch (t) {
             case EVEN_ODD, MAKE_TEN, ORDER_OPS, ROUNDING, DIVISIBILITY, MEASURE, DECIMALS, PERCENT, RATIO,
-                 DATA, CIRCLE, VOLUME, EQUATIONS -> true;
+                 DATA, CIRCLE, VOLUME, EQUATIONS, FRAC_EXPAND -> true;
             default -> false;
         };
     }
@@ -59,6 +59,7 @@ public final class ExtraTopicsQuestions {
             case CIRCLE ->       new int[] {0, 0, 0, 0, 0, 6};
             case VOLUME ->       new int[] {0, 0, 0, 0, 3, 6};
             case EQUATIONS ->    new int[] {0, 0, 2, 3, 4, 6};
+            case FRAC_EXPAND ->  new int[] {0, 0, 0, 4, 6, 6};
             default -> new int[] {0, 0, 0, 0, 0, 0};
         };
         return byGrade[k - 1];
@@ -91,6 +92,7 @@ public final class ExtraTopicsQuestions {
             case DATA -> data(id, level);
             case CIRCLE -> circle(id, level);
             case VOLUME -> volume(id, level);
+            case FRAC_EXPAND -> fracExpand(id, level);
             default -> equations(id, level);
         };
     }
@@ -862,6 +864,89 @@ public final class ExtraTopicsQuestions {
     }
 
     // ---- helpers -----------------------------------------------------------------------------
+
+
+    // ---- 14. הרחבת שברים (ד׳-ו׳) - 2026-11-24, like the workbook page (נושא 8) --------------------
+    // 1: ?/? missing, the ×k arrows shown · 2: missing, ×? (find k yourself) · 3: "בכמה הרחיבו?"
+    // 4: which fraction is an expansion of 2/3 (the add-instead-of-multiply mistake among them)
+    // 5: which pair was expanded by k (like "סמנו את הזוגות שהורחבו פי 3") · 6: bigger numbers, k up to 10
+
+    private static final int[][] EXPAND_BASES = {{1, 2}, {1, 3}, {2, 3}, {1, 4}, {3, 4}, {1, 5}, {2, 5}, {3, 5}, {4, 5},
+            {1, 6}, {5, 6}, {2, 7}, {3, 7}, {1, 8}, {3, 8}, {5, 8}, {2, 9}, {4, 9}, {3, 10}, {7, 10}};
+
+    private int[] expandBase(int level) {
+        int max = small || level <= 2 ? 9 : EXPAND_BASES.length; // the first ones: halves..fifths
+        return EXPAND_BASES[random.nextInt(Math.min(max, EXPAND_BASES.length))];
+    }
+
+    private int expandBy(int level) {
+        if (small) return rand(2, 3);
+        return switch (level) { case 1 -> rand(2, 4); case 2, 3, 4, 5 -> rand(2, 6); default -> rand(4, 10); };
+    }
+
+    /** The picture: n/d = N/D with ×k arrows above and below; "?" for what is asked. */
+    private static VisualModel expandPicture(String n, String d, String bigN, String bigD, String k) {
+        return new VisualModel("FRAC_EXPAND", n + "," + d + "," + bigN + "," + bigD + "," + k, 0, 0, 0, "×");
+    }
+
+    private QuestionResponse fracExpand(int id, int level) {
+        int[] b = expandBase(level);
+        int n = b[0], d = b[1], k = expandBy(level);
+        int bn = n * k, bd = d * k;
+        String hint = "בהרחבה כופלים את המספר שלמעלה ואת המספר שלמטה באותו מספר.";
+        switch (level) {
+            case 1, 2, 6 -> {
+                boolean askTop = level == 1 ? random.nextInt(3) == 0 : random.nextBoolean();
+                String shown = level == 1 ? String.valueOf(k) : "?";
+                if (askTop) {
+                    return num(id, Topic.FRAC_EXPAND, "השלימו את השבר: " + n + "/" + d + " = ?/" + bd, bn,
+                            List.of(n + k, bd - d + n, bn + n, n * (k + 1)),
+                            level == 1 ? "המספר שלמטה הוכפל פי " + k + ". כופלים גם את המספר שלמעלה פי " + k + "."
+                                    : "בכמה הוכפל " + d + " כדי להגיע ל-" + bd + "? באותו מספר כופלים את " + n + ".",
+                            d + " × " + k + " = " + bd + ", ולכן " + n + " × " + k + " = " + bn + ".",
+                            expandPicture(String.valueOf(n), String.valueOf(d), "?", String.valueOf(bd), shown))
+                            .withSkill(level == 6 ? "EXPAND_BIG" : "EXPAND_MISSING_TOP");
+                }
+                return num(id, Topic.FRAC_EXPAND, "השלימו את השבר: " + n + "/" + d + " = " + bn + "/?", bd,
+                        List.of(d + k, d + bn - n, bd + d, d * (k + 1)),
+                        level == 1 ? "המספר שלמעלה הוכפל פי " + k + ". כופלים גם את המספר שלמטה פי " + k + "."
+                                : "בכמה הוכפל " + n + " כדי להגיע ל-" + bn + "? באותו מספר כופלים את " + d + ".",
+                        n + " × " + k + " = " + bn + ", ולכן " + d + " × " + k + " = " + bd + ".",
+                        expandPicture(String.valueOf(n), String.valueOf(d), String.valueOf(bn), "?", shown))
+                        .withSkill(level == 6 ? "EXPAND_BIG" : "EXPAND_MISSING_BOTTOM");
+            }
+            case 3 -> {
+                return num(id, Topic.FRAC_EXPAND, "בכמה הרחיבו? " + n + "/" + d + " = " + bn + "/" + bd, k,
+                        List.of(bn - n, bd - d, k + 1, k - 1),
+                        "בודקים: פי כמה " + n + " גדל עד " + bn + "? (ולמטה - אותו מספר).",
+                        n + " × " + k + " = " + bn + " וגם " + d + " × " + k + " = " + bd + " - הרחיבו פי " + k + ".",
+                        expandPicture(String.valueOf(n), String.valueOf(d), String.valueOf(bn), String.valueOf(bd), "?"))
+                        .withSkill("EXPAND_BY_HOW_MUCH");
+            }
+            case 4 -> {
+                String right = bn + "/" + bd;
+                List<String> wrong = List.of((n + k) + "/" + (d + k), bn + "/" + d, n + "/" + bd, (n * k) + "/" + (d * k + 1));
+                return text(id, Topic.FRAC_EXPAND, "איזה שבר הוא הרחבה של " + n + "/" + d + "?", right, wrong,
+                        hint + " לבדוק: אותו 'פי' למעלה ולמטה?",
+                        n + "/" + d + " = " + right + " (כפלנו למעלה ולמטה פי " + k + ").", null)
+                        .withSkill("EXPAND_WHICH");
+            }
+            default -> { // 5
+                String right = n + "/" + d + " = " + bn + "/" + bd;
+                List<String> wrong = new ArrayList<>();
+                int[] o1 = expandBase(level), o2 = expandBase(level), o3 = expandBase(level);
+                int k1 = k == 2 ? 3 : k - 1, k2 = k == 2 ? 4 : k + 1;
+                wrong.add(o1[0] + "/" + o1[1] + " = " + o1[0] * k1 + "/" + o1[1] * k1);           // expanded by another number
+                wrong.add(o2[0] + "/" + o2[1] + " = " + o2[0] * k2 + "/" + o2[1] * k2);           // and another
+                wrong.add(o3[0] + "/" + o3[1] + " = " + (o3[0] + k) + "/" + (o3[1] + k));        // added k instead
+                wrong.add(o3[0] + "/" + o3[1] + " = " + o3[0] * k + "/" + o3[1]);                 // only the top
+                return text(id, Topic.FRAC_EXPAND, "איזה זוג הורחב פי " + k + "?", right, wrong,
+                        "בכל זוג בודקים: פי כמה גדל המספר שלמעלה, ופי כמה המספר שלמטה. צריך פי " + k + " בשניהם.",
+                        n + " × " + k + " = " + bn + " וגם " + d + " × " + k + " = " + bd + ".", null)
+                        .withSkill("EXPAND_PAIR");
+            }
+        }
+    }
 
     private List<Integer> distinctInts(int count, int min, int max) {
         Set<Integer> s = new LinkedHashSet<>();

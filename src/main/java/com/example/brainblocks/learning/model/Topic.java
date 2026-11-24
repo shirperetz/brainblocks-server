@@ -52,6 +52,8 @@ public enum Topic {
     CIRCLE,
     VOLUME,
     EQUATIONS,
+    // 2026-11-24 (Shir, from the grade-5 workbook page "הרחבת שברים"): its own topic for ד׳-ו׳.
+    FRAC_EXPAND,
     // 2026-11-21: a round built like the grade-5 מיצ"ב (fractions+decimals ~35%, whole numbers ~30%,
     // geometry+measurement ~25%, data ~10%) - each question is made by its own topic's generator.
     MEITZAV;

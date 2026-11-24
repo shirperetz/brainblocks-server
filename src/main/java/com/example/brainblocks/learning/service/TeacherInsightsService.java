@@ -32,7 +32,7 @@ public class TeacherInsightsService {
 
     /** The four Meitzav (grade 5) areas and their weight in the test. */
     public enum Area {
-        FRACTIONS("שברים ועשרוניים", 35, Topic.FRACTIONS, Topic.DECIMALS, Topic.PERCENT, Topic.RATIO),
+        FRACTIONS("שברים ועשרוניים", 35, Topic.FRACTIONS, Topic.DECIMALS, Topic.PERCENT, Topic.RATIO, Topic.FRAC_EXPAND),
         WHOLE("מספרים טבעיים", 30, Topic.ADDITION, Topic.SUBTRACTION, Topic.MULTIPLICATION, Topic.DIVISION, Topic.ORDER_OPS,
                 Topic.ROUNDING, Topic.DIVISIBILITY, Topic.EQUATIONS, Topic.EVEN_ODD, Topic.WORD_PROBLEMS, Topic.COMPARISON, Topic.SEQUENCES),
         GEOMETRY("גיאומטריה ומדידות", 25, Topic.GEOMETRY, Topic.ANGLES, Topic.ANGLE_CALC, Topic.PERIMETER, Topic.AREA,

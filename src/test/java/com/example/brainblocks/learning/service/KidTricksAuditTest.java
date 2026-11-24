@@ -173,7 +173,7 @@ class KidTricksAuditTest {
             Topic.PERIMETER, Topic.AREA,
             // 2026-11-21: the new topics
             Topic.EVEN_ODD, Topic.MAKE_TEN, Topic.ORDER_OPS, Topic.ROUNDING, Topic.DIVISIBILITY, Topic.MEASURE,
-            Topic.DECIMALS, Topic.PERCENT, Topic.RATIO, Topic.DATA, Topic.CIRCLE, Topic.VOLUME, Topic.EQUATIONS);
+            Topic.DECIMALS, Topic.PERCENT, Topic.RATIO, Topic.DATA, Topic.CIRCLE, Topic.VOLUME, Topic.EQUATIONS, Topic.FRAC_EXPAND);
 
     record Row(Topic topic, Grade grade, int stage, String trick, double rate, int n) {
     }
