@@ -15,6 +15,9 @@ import java.io.IOException;
  * showing an older version for a while after an update - the morning's "log in -> home screen" fix
  * included. The page now always asks the server first ("no-cache" = revalidate, cheap with
  * Last-Modified); the files under /assets/ have a content hash in their name, so they may stay cached.
+ * 2026-11-25 (speed check): the dolphin frames and the recorded voices were "no-cache" too - every
+ * visit asked again about ~9 pictures. They change rarely and keep their names, so a week in the
+ * browser (not "immutable": a replaced frame shows up within a week, or at once after a refresh).
  */
 @Component
 public class HtmlNoCacheFilter extends OncePerRequestFilter {
@@ -26,6 +29,8 @@ public class HtmlNoCacheFilter extends OncePerRequestFilter {
         if (!path.startsWith("/api/")) {
             if (path.startsWith("/assets/")) {
                 response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            } else if (path.startsWith("/mascot/") || path.startsWith("/audio/")) {
+                response.setHeader("Cache-Control", "public, max-age=604800");
             } else {
                 response.setHeader("Cache-Control", "no-cache");
             }
