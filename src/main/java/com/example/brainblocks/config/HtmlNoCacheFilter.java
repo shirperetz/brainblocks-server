@@ -29,7 +29,7 @@ public class HtmlNoCacheFilter extends OncePerRequestFilter {
         if (!path.startsWith("/api/")) {
             if (path.startsWith("/assets/")) {
                 response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-            } else if (path.startsWith("/mascot/") || path.startsWith("/audio/")) {
+            } else if (path.startsWith("/mascot/") || path.startsWith("/audio/") || path.startsWith("/fonts/")) {
                 response.setHeader("Cache-Control", "public, max-age=604800");
             } else {
                 response.setHeader("Cache-Control", "no-cache");

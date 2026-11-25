@@ -22,6 +22,7 @@ class HtmlNoCacheFilterTest {
         assertThat(cacheFor("/assets/index-abc.js")).contains("immutable");
         assertThat(cacheFor("/mascot/idle-01.webp")).isEqualTo("public, max-age=604800");
         assertThat(cacheFor("/audio/island/hello.mp3")).isEqualTo("public, max-age=604800");
+        assertThat(cacheFor("/fonts/rubik-hebrew.woff2")).isEqualTo("public, max-age=604800");
         assertThat(cacheFor("/")).isEqualTo("no-cache");
         assertThat(cacheFor("/privacy")).isEqualTo("no-cache");
         assertThat(cacheFor("/api/ping")).isNull();

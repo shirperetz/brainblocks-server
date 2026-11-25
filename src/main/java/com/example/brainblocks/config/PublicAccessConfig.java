@@ -113,11 +113,11 @@ public class PublicAccessConfig implements WebMvcConfigurer {
     static final long MINUTE = 60_000;
 
     /**
-     * Only the site's own scripts; inline styles (React style attributes) and the Rubik font from Google
-     * Fonts; audio/images from the site, data: and blob: (the read-aloud WAVs are object URLs).
+     * Only the site's own scripts; inline styles (React style attributes); the Rubik font from the site
+     * itself (2026-11-25 - no more Google Fonts); audio/images from the site, data: and blob: (the read-aloud WAVs are object URLs).
      */
     static final String CSP = "default-src 'self'; script-src 'self'; "
-            + "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
+            + "style-src 'self' 'unsafe-inline'; font-src 'self'; "
             + "img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self'; "
             + "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
