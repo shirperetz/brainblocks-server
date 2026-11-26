@@ -116,7 +116,13 @@ public class PublicAccessConfig implements WebMvcConfigurer {
      * Only the site's own scripts; inline styles (React style attributes); the Rubik font from the site
      * itself (2026-11-25 - no more Google Fonts); audio/images from the site, data: and blob: (the read-aloud WAVs are object URLs).
      */
-    static final String CSP = "default-src 'self'; script-src 'self'; "
+    // 2026-11-26 (old iPads): the 3 tiny inline loaders of the older build (@vitejs/plugin-legacy 8.2.4,
+    // with the modern check moved to /modern-check.js) are allowed by their hash only. The client test
+    // cspHashes.test.js recomputes them from dist/index.html - update here when it fails.
+    static final String LEGACY_SCRIPTS = "'sha256-bu4VxQ4Udu7oc/HkMWE+n9CAApTdbyHnOxBwmPaIS7Q=' "
+            + "'sha256-+5XkZFazzJo8n0iOP4ti/cLCMUudTf//Mzkb7xNPXIc=' 'sha256-MS6/3FCg4WjP9gwgaBGwLpRCY6fZBgwmhVCdrPrNf3E='";
+
+    static final String CSP = "default-src 'self'; script-src 'self' " + LEGACY_SCRIPTS + "; "
             + "style-src 'self' 'unsafe-inline'; font-src 'self'; "
             + "img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self'; "
             + "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
