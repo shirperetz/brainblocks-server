@@ -30,4 +30,10 @@ public class SubmitSessionRequest {
     public String getFoundation() { return foundation; }
     public void setFoundation(String foundation) { this.foundation = foundation; }
     public void setAnswers(List<AnswerDto> answers) { this.answers = answers; }
+
+    /** 2026-11-26: the phone's own key for this round - a resend returns the first save (RoundOnce). */
+    private String roundKey;
+
+    public String getRoundKey() { return roundKey; }
+    public void setRoundKey(String roundKey) { this.roundKey = roundKey; }
 }

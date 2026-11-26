@@ -358,7 +358,8 @@ public class LearnController {
                         com.example.brainblocks.learning.service.AdvancedLevels.effective(p, parseTopic(request.getTopic())))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "הנושא הזה לא שייך לכיתה שלך");
         }
-        return progressService.submitSession(request);
+        return com.example.brainblocks.learning.service.RoundOnce.run(request.getProfileId(), request.getRoundKey(),
+                () -> progressService.submitSession(request));
     }
 
     // ---- Help ("לא הבנתי") -----------------------------------------------

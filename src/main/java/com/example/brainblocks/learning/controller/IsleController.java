@@ -40,7 +40,8 @@ public class IsleController {
     public Map<String, Object> submit(@PathVariable Long id, @PathVariable String key, @RequestBody Body body,
                                       @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
         if (!id.equals(me)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found");
-        return isles.submit(id, key, body.topic, body.stage, body.answers, body.durationMs);
+        return com.example.brainblocks.learning.service.RoundOnce.run(id, body.roundKey,
+                () -> isles.submit(id, key, body.topic, body.stage, body.answers, body.durationMs));
     }
 
     public static class Body {
@@ -48,5 +49,6 @@ public class IsleController {
         public int stage;
         public long durationMs;
         public List<AnswerDto> answers;
+        public String roundKey; // 2026-11-26: RoundOnce
     }
 }
