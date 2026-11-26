@@ -135,7 +135,8 @@ class AdminSecondFactorTest {
         String challenge = (String) t3.get("challenge");
         Map<String, Object> ok = post("/api/learn/auth/second/passkey",
                 assertion(key, credId, t3.get("ticket"), challenge, ORIGIN, 0x05), null, 200);
-        assertThat(ok.get("token")).isEqualTo(token);
+        // 2026-11-26: every log-in is its own device token now (hashed rows) - a new one, not the same
+        assertThat((String) ok.get("token")).isNotBlank().isNotEqualTo(token);
 
         // another site's page, no fingerprint (only "present"), or a different key: refused
         Map<String, Object> t4 = login();

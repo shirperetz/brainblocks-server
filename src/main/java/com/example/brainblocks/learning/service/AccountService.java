@@ -44,6 +44,12 @@ public class AccountService {
     private final LearnerProfileRepository repository;
     private final LearnerProfileService profileService;
     private final SecureRandom random = new SecureRandom();
+
+    // 2026-11-26 (security #14): devices' tokens kept only as SHA-256, one row per device (LearnToken).
+    // Null in plain unit tests (built without Spring) - then the old single token in the profile is used.
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.example.brainblocks.learning.repository.LearnTokenRepository tokens;
+    static final int MAX_DEVICES = 10;
     private final Map<String, Failures> failures = new ConcurrentHashMap<>();
 
     private record Failures(int count, Instant since) {
@@ -141,7 +147,7 @@ public class AccountService {
         }
         checkPassword(password);
         p.setPasswordHash(hash(password));
-        p.setAuthToken(newToken());
+        revokeAll(p);
         failures.remove(p.getUsername());
         repository.save(p);
         return ProfileResponse.fromEntity(p);
@@ -159,9 +165,10 @@ public class AccountService {
         if (p.isTeacher() || p.isAdmin()) checkStaffPassword(next);
         else checkPassword(next);
         p.setPasswordHash(hash(next));
-        p.setAuthToken(newToken());
+        revokeAll(p);
+        String raw = issue(p, java.time.LocalDateTime.now());
         repository.save(p);
-        return new Session(p.getAuthToken(), ProfileResponse.fromEntity(p));
+        return new Session(raw, ProfileResponse.fromEntity(p));
     }
 
     /** Block / unblock; blocking also ends every logged-in device. The admin can't block herself. */
@@ -171,6 +178,7 @@ public class AccountService {
      */
     public void logout(String token) {
         if (token == null || token.isBlank() || token.length() > 64) return;
+        if (tokens != null) tokens.findByTokenHash(sha(token)).ifPresent(tokens::delete);
         repository.findByAuthToken(token).ifPresent(p -> {
             p.setAuthToken(null);
             repository.save(p);
@@ -184,7 +192,7 @@ public class AccountService {
         LearnerProfile p = profileService.findProfile(id);
         p.setDisabled(disabled);
         if (disabled) {
-            p.setAuthToken(null);
+            revokeAll(p);
         }
         repository.save(p);
         return ProfileResponse.fromEntity(p);
@@ -366,9 +374,9 @@ public class AccountService {
         // Waits for the admin: no token until she approves (the child logs in after that).
         p.setApproved(false);
         applyAdmin(p);
-        if (p.isAdmin()) p.setAuthToken(newToken());
+        String raw = p.isAdmin() ? issue(p, java.time.LocalDateTime.now()) : null;
         repository.save(p);
-        return new Session(p.getAuthToken(), ProfileResponse.fromEntity(p));
+        return new Session(raw, ProfileResponse.fromEntity(p));
     }
 
     public Session login(String username, String password, Instant now) {
@@ -398,6 +406,14 @@ public class AccountService {
         }
         // An old token that sat unused past the idle limit is replaced, never revived.
         java.time.LocalDateTime nowLocal = java.time.LocalDateTime.ofInstant(now, java.time.ZoneId.systemDefault());
+        if (tokens != null) {
+            // every log-in = a new device row; the database never sees the token itself
+            String raw = issue(p, nowLocal);
+            p.setTokenUsedAt(nowLocal);
+            p.touch();
+            repository.save(p);
+            return new Session(raw, ProfileResponse.fromEntity(p));
+        }
         if (p.getAuthToken() == null || (idleMinutes > 0 && p.getTokenUsedAt() != null
                 && p.getTokenUsedAt().plusMinutes(idleMinutes).isBefore(nowLocal))) {
             p.setAuthToken(newToken());
@@ -422,6 +438,7 @@ public class AccountService {
         if (token == null || token.isBlank() || token.length() > 64) {
             return Optional.empty();
         }
+        if (tokens != null) return deviceFor(token, now);
         Optional<LearnerProfile> found = repository.findByAuthToken(token).filter(p -> !p.isDisabled() && p.isApproved());
         if (found.isEmpty()) return Optional.empty();
         LearnerProfile p = found.get();
@@ -470,6 +487,70 @@ public class AccountService {
 
     private static ResponseStatusException bad(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    /** A new device token for [p]: only its hash is stored (at most MAX_DEVICES rows, the oldest go). */
+    private String issue(LearnerProfile p, java.time.LocalDateTime now) {
+        String raw = newToken();
+        if (tokens == null) {
+            p.setAuthToken(raw);
+            return raw;
+        }
+        p.setAuthToken(null);
+        tokens.save(new com.example.brainblocks.learning.model.LearnToken(p.getId(), sha(raw), now));
+        var mine = tokens.findByProfileIdOrderByUsedAtDesc(p.getId());
+        if (mine.size() > MAX_DEVICES) tokens.deleteAll(mine.subList(MAX_DEVICES, mine.size()));
+        return raw;
+    }
+
+    /** Every device of [p] logs in again. */
+    private void revokeAll(LearnerProfile p) {
+        p.setAuthToken(null);
+        if (tokens != null && p.getId() != null) tokens.deleteByProfileId(p.getId());
+    }
+
+    /**
+     * The profile behind a device token (hashed rows). A token from before 26.11 (kept as is in the
+     * profile) still works once: it moves into a hashed row and leaves the profile - nobody is logged out.
+     */
+    private Optional<Long> deviceFor(String token, java.time.LocalDateTime now) {
+        String h = sha(token);
+        var row = tokens.findByTokenHash(h);
+        if (row.isEmpty()) {
+            Optional<LearnerProfile> old = repository.findByAuthToken(token);
+            if (old.isEmpty()) return Optional.empty();
+            LearnerProfile p = old.get();
+            java.time.LocalDateTime used = p.getTokenUsedAt() != null ? p.getTokenUsedAt() : now;
+            p.setAuthToken(null);
+            repository.save(p);
+            if (p.isDisabled() || !p.isApproved() || (idleMinutes > 0 && used.plusMinutes(idleMinutes).isBefore(now))) {
+                return Optional.empty();
+            }
+            row = Optional.of(tokens.save(new com.example.brainblocks.learning.model.LearnToken(p.getId(), h, now)));
+        }
+        var t = row.get();
+        Optional<LearnerProfile> owner = repository.findById(t.getProfileId()).filter(p -> !p.isDisabled() && p.isApproved());
+        if (owner.isEmpty() || (idleMinutes > 0 && t.getUsedAt() != null && t.getUsedAt().plusMinutes(idleMinutes).isBefore(now))) {
+            tokens.delete(t);
+            return Optional.empty();
+        }
+        if (t.getUsedAt() == null || t.getUsedAt().plusSeconds(60).isBefore(now)) {
+            t.setUsedAt(now);
+            tokens.save(t);
+            LearnerProfile p = owner.get();
+            p.setTokenUsedAt(now);
+            repository.save(p);
+        }
+        return Optional.of(t.getProfileId());
+    }
+
+    static String sha(String token) {
+        try {
+            byte[] d = MessageDigest.getInstance("SHA-256").digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(d);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private String newToken() {
