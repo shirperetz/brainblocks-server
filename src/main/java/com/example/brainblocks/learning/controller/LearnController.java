@@ -421,6 +421,26 @@ public class LearnController {
                 .filter(m -> m.isDue(now)).limit(20).map(MistakeDto::fromEntity).toList();
     }
 
+    /** 2026-11-27 (idea #5 - mistakes island): ALL the child's open mistakes (not only the ones due today),
+     *  so the island shows every spot to clean. Capped. */
+    @GetMapping("/profiles/{id}/mistakes/all")
+    public List<MistakeDto> allMistakes(@PathVariable Long id, @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        own(id, me);
+        profileService.findProfile(id);
+        return mistakeRepository.findByProfileIdAndResolvedFalseOrderByCreatedAtDesc(id).stream()
+                .limit(30).map(MistakeDto::fromEntity).toList();
+    }
+
+    /** 2026-11-27 (idea #5): answered right on the mistakes island -> that spot is cleaned (fully resolved). */
+    @PostMapping("/mistakes/{id}/clean")
+    public Map<String, Object> cleanMistake(@PathVariable Long id, @RequestParam Long profileId,
+                                            @RequestAttribute(LearnerAuthConfig.ATTRIBUTE) Long me) {
+        LearnerMistake m = ownMistake(id, profileId, me);
+        m.resolve();
+        mistakeRepository.save(m);
+        return Map.of("resolved", true);
+    }
+
     /** Right in the review: back after 1, 3, 7 days, then learned (LearnerMistake.reviewedRight). */
     @PostMapping("/mistakes/{id}/resolve")
     public Map<String, Object> resolveMistake(@PathVariable Long id, @RequestParam Long profileId,
