@@ -295,7 +295,8 @@ public class IslandShopService {
             // 2026-11-13 (Shir: "a million coins, only for me, to test"): coins given by hand in the DB
             // (kind "bonus", level = how many). No route creates one.
             // 2026-11-22 (room upgrade #5): coins from a game room ("room:<code>-<start>", level = how many)
-            if (it.getKind().equals("bonus") || it.getKind().startsWith("room:")) {
+            // 2026-11-27 (idea #10): coins from a teacher's prize ("award:<id>", level = how many)
+            if (it.getKind().equals("bonus") || it.getKind().startsWith("room:") || it.getKind().startsWith("award:")) {
                 bonus += it.getLevel();
                 continue;
             }
