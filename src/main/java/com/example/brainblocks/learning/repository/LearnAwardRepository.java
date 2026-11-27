@@ -10,4 +10,5 @@ public interface LearnAwardRepository extends JpaRepository<LearnAward, Long> {
     List<LearnAward> findTop20ByProfileIdOrderByCreatedAtDesc(Long profileId);
     long countByFromIdAndCreatedAtAfter(Long fromId, LocalDateTime after);
     long countByProfileIdAndCreatedAtAfter(Long profileId, LocalDateTime after);
+    long countByProfileId(Long profileId);
 }
