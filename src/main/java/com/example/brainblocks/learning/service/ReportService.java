@@ -51,6 +51,27 @@ public class ReportService {
         return report(p);
     }
 
+    /**
+     * 2026-11-26 (idea #9): what a parent sees through the teacher's link - only the friendly parts
+     * (first name, grade, this week, strong / needs help, what usually goes wrong + a tip). No username,
+     * no class, no ids.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> parentView(LearnerProfile p) {
+        Map<String, Object> r = report(p);
+        Map<String, Object> child = (Map<String, Object>) r.get("child");
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        String name = p.getName() == null ? "" : p.getName().trim();
+        out.put("name", name.contains(" ") ? name.substring(0, name.indexOf(' ')) : name);
+        out.put("avatar", p.getAvatar());
+        out.put("grade", p.getGrade());
+        out.put("dailyStreak", child == null ? 0 : child.get("dailyStreak"));
+        for (String k : List.of("week", "stars", "stagesCompleted", "strong", "hard", "patterns", "recommendation", "trendDirection")) {
+            out.put(k, r.get(k));
+        }
+        return out;
+    }
+
     private Map<String, Object> report(LearnerProfile p) {
         var all = answers.findByProfileId(p.getId());
         Map<String, Object> r = new java.util.LinkedHashMap<>(ProgressReport.build(p, sessions.findByProfileId(p.getId()), all,

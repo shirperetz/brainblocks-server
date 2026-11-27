@@ -95,7 +95,8 @@ public class LearnerAuthConfig implements WebMvcConfigurer {
                 Object who = request.getAttribute(ATTRIBUTE);
                 if (who instanceof Long id) audit.record(id, request.getMethod(), path);
             }
-        }).addPathPatterns("/api/learn/**").excludePathPatterns("/api/learn/auth/**", "/api/learn/room-guest/**");
+        }).addPathPatterns("/api/learn/**").excludePathPatterns("/api/learn/auth/**", "/api/learn/room-guest/**", "/api/learn/parent-view/**");
+        // 2026-11-26: the parents link page has no log-in - ParentLinkController checks the link code itself.
         // 2026-11-12: a game-room guest has no account - RoomGuestController checks its own per-room token.
     }
 }
